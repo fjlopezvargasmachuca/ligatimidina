@@ -42,6 +42,12 @@ class DeckCreateAPIView(CreateAPIView):
                 deck.deckcheck_id = deckcheck_id
                 deck.save(update_fields=["deckcheck_id"])
 
+        if deck.deckcheck_id:
+            data = DeckCheckService.get_deck(
+                deck_id=deck.deckcheck_id
+            )
+            DeckCheckService.save_analysis(deck, data)
+
 
 class DeckUpdateAPIView(UpdateAPIView):
     queryset = Deck.objects.all()

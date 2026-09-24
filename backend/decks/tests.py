@@ -2,10 +2,10 @@ import requests
 from django.test import TestCase
 from rest_framework.test import APITestCase
 from accounts.models import Player
-from .models import Deck
+from .models import Deck, DeckAnalysis
 from unittest.mock import patch
 from decks.services import DeckCheckService
-
+from accounts.models import Player
 
 class DeckListAPITest(APITestCase):
 
@@ -130,7 +130,17 @@ class DeckCreateAPITest(APITestCase):
             0,
         )
 
-    def test_authenticated_user_creates_deck_with_own_owner(self):
+    @patch("decks.views.DeckCheckService.get_deck")
+    def test_authenticated_user_creates_deck_with_own_owner(
+        self,
+        mock_get_deck,
+    ):
+        mock_get_deck.return_value = {
+            "id": "deckcheck-123",
+            "bracket": 3,
+            "name": "Mazo nuevo",
+        }
+
         self.client.force_authenticate(user=self.player)
 
         response = self.client.post(
@@ -155,7 +165,27 @@ class DeckCreateAPITest(APITestCase):
             "Comandante nuevo",
         )
 
-    def test_authenticated_user_cannot_set_is_original(self):
+        mock_get_deck.assert_called_once_with(
+            deck_id="deckcheck-123"
+        )
+
+        self.assertTrue(
+            DeckAnalysis.objects.filter(
+                deck=deck,
+                bracket="3",
+            ).exists()
+        )
+
+    @patch("decks.views.DeckCheckService.get_deck")
+    def test_authenticated_user_cannot_set_is_original(
+        self,
+        mock_get_deck,
+    ):
+        mock_get_deck.return_value = {
+            "id": "deckcheck-123",
+            "bracket": 3,
+            "name": "Mazo nuevo",
+        }
         self.client.force_authenticate(user=self.player)
 
         payload = {
@@ -173,6 +203,17 @@ class DeckCreateAPITest(APITestCase):
 
         deck = Deck.objects.get(name="Mazo nuevo")
         self.assertFalse(deck.is_original)
+
+        mock_get_deck.assert_called_once_with(
+            deck_id="deckcheck-123"
+        )
+
+        self.assertTrue(
+            DeckAnalysis.objects.filter(
+                deck=deck,
+                bracket="3",
+            ).exists()
+        )
 
     @patch("decks.views.DeckCheckService.get_deck_id_from_url")
     def test_create_deck_without_deckcheck_id_when_deckcheck_returns_none(
@@ -203,11 +244,19 @@ class DeckCreateAPITest(APITestCase):
         mock_get_deck_id.assert_called_once_with(
             self.payload["deck_url"]
         )
+    @patch("decks.views.DeckCheckService.get_deck")
     @patch("decks.views.DeckCheckService.get_deck_id_from_url")
-    def test_create_deck_does_not_call_deckcheck_when_id_already_exists(
+    def test_create_deck_uses_existing_deckcheck_id(
         self,
         mock_get_deck_id,
+        mock_get_deck,
     ):
+        mock_get_deck.return_value = {
+            "id": "deckcheck-123",
+            "bracket": 3,
+            "name": "Mazo nuevo",
+        }
+
         self.client.force_authenticate(user=self.player)
 
         response = self.client.post(
@@ -226,12 +275,31 @@ class DeckCreateAPITest(APITestCase):
         )
 
         mock_get_deck_id.assert_not_called()
+
+        mock_get_deck.assert_called_once_with(
+            deck_id="deckcheck-123"
+        )
+
+        self.assertTrue(
+            DeckAnalysis.objects.filter(
+                deck=deck,
+                bracket="3",
+            ).exists()
+        )
+
+    @patch("decks.views.DeckCheckService.get_deck")
     @patch("decks.views.DeckCheckService.get_deck_id_from_url")
     def test_create_deck_gets_deckcheck_id_from_url(
         self,
         mock_get_deck_id,
+        mock_get_deck,
     ):
         mock_get_deck_id.return_value = "deckcheck-999"
+        mock_get_deck.return_value = {
+            "id": "deckcheck-999",
+            "bracket": 3,
+            "name": "Mazo nuevo",
+        }
 
         self.client.force_authenticate(user=self.player)
 
@@ -258,6 +326,19 @@ class DeckCreateAPITest(APITestCase):
         mock_get_deck_id.assert_called_once_with(
             self.payload["deck_url"]
         )
+
+        mock_get_deck.assert_called_once_with(
+            deck_id="deckcheck-999"
+        )
+
+        self.assertTrue(
+            DeckAnalysis.objects.filter(
+                deck=deck,
+                bracket="3",
+            ).exists()
+        )
+
+
 class DeckUpdateAPITest(APITestCase):
 
     def setUp(self):
@@ -515,3 +596,29 @@ class DeckCheckServiceTest(TestCase):
             },
             timeout=10,
         )
+    def test_save_analysis_creates_analysis(self):
+        deck = Deck.objects.create(
+            owner=Player.objects.create_user(
+            username="analysis_test",
+            password="testpass123",
+            display_name="Analysis Test",
+            ),
+            name="Mazo de prueba",
+            commander="Comandante de prueba",
+        )
+
+        data = {
+            "id": "test123",
+            "bracket": 3,
+            "name": "Mazo de prueba",
+            "format": "commander",
+        }
+
+        analysis = DeckCheckService.save_analysis(deck, data)
+
+        self.assertEqual(analysis.deck, deck)
+        self.assertEqual(analysis.bracket, "3")
+        self.assertEqual(analysis.raw_data, data)
+        self.assertEqual(analysis.win_conditions, 0)
+        self.assertEqual(analysis.game_changers, 0)
+        self.assertIsNone(analysis.crispi_score)
