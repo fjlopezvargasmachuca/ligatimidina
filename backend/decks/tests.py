@@ -174,7 +174,90 @@ class DeckCreateAPITest(APITestCase):
         deck = Deck.objects.get(name="Mazo nuevo")
         self.assertFalse(deck.is_original)
 
+    @patch("decks.views.DeckCheckService.get_deck_id_from_url")
+    def test_create_deck_without_deckcheck_id_when_deckcheck_returns_none(
+        self,
+        mock_get_deck_id,
+    ):
+        mock_get_deck_id.return_value = None
 
+        self.client.force_authenticate(user=self.player)
+
+        payload = {
+            **self.payload,
+            "deckcheck_id": "",
+        }
+
+        response = self.client.post(
+            "/api/decks/create/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        deck = Deck.objects.get(name="Mazo nuevo")
+
+        self.assertEqual(deck.deckcheck_id, "")
+
+        mock_get_deck_id.assert_called_once_with(
+            self.payload["deck_url"]
+        )
+    @patch("decks.views.DeckCheckService.get_deck_id_from_url")
+    def test_create_deck_does_not_call_deckcheck_when_id_already_exists(
+        self,
+        mock_get_deck_id,
+    ):
+        self.client.force_authenticate(user=self.player)
+
+        response = self.client.post(
+            "/api/decks/create/",
+            self.payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        deck = Deck.objects.get(name="Mazo nuevo")
+
+        self.assertEqual(
+            deck.deckcheck_id,
+            "deckcheck-123",
+        )
+
+        mock_get_deck_id.assert_not_called()
+    @patch("decks.views.DeckCheckService.get_deck_id_from_url")
+    def test_create_deck_gets_deckcheck_id_from_url(
+        self,
+        mock_get_deck_id,
+    ):
+        mock_get_deck_id.return_value = "deckcheck-999"
+
+        self.client.force_authenticate(user=self.player)
+
+        payload = {
+            **self.payload,
+            "deckcheck_id": "",
+        }
+
+        response = self.client.post(
+            "/api/decks/create/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        deck = Deck.objects.get(name="Mazo nuevo")
+
+        self.assertEqual(
+            deck.deckcheck_id,
+            "deckcheck-999",
+        )
+
+        mock_get_deck_id.assert_called_once_with(
+            self.payload["deck_url"]
+        )
 class DeckUpdateAPITest(APITestCase):
 
     def setUp(self):

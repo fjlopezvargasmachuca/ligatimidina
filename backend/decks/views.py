@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.generics import CreateAPIView
 from rest_framework.generics import UpdateAPIView
 from rest_framework.generics import DestroyAPIView
+from .services import DeckCheckService
 
 class DeckListAPIView(ListAPIView):
     queryset = (
@@ -30,7 +31,16 @@ class DeckCreateAPIView(CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        deck = serializer.save(owner=self.request.user)
+
+        if deck.deck_url and not deck.deckcheck_id:
+            deckcheck_id = DeckCheckService.get_deck_id_from_url(
+                deck.deck_url
+            )
+
+            if deckcheck_id:
+                deck.deckcheck_id = deckcheck_id
+                deck.save(update_fields=["deckcheck_id"])
 
 
 class DeckUpdateAPIView(UpdateAPIView):
