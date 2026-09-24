@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import DeckListAPIView
+from .views import DeckDetailAPIView, DeckListAPIView
 
 
 urlpatterns = [
@@ -8,5 +8,10 @@ urlpatterns = [
         "",
         DeckListAPIView.as_view(),
         name="api-decks",
+    ),
+    path(
+        "<int:pk>/",
+        DeckDetailAPIView.as_view(),
+        name="api-deck-detail",
     ),
 ]
