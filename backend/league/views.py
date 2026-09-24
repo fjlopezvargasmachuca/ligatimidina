@@ -1,6 +1,9 @@
 from django.shortcuts import render
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import LeagueWeek, Season
+from .serializers import StandingSerializer
 from .services import RankingService
 
 
@@ -45,3 +48,24 @@ def standings_view(request):
         "league/standings.html",
         context,
     )
+
+
+class StandingsAPIView(APIView):
+    def get(self, request):
+        season = Season.objects.filter(active=True).first()
+
+        if season is None:
+            return Response(
+                {"detail": "No hay ninguna temporada activa."},
+                status=404,
+            )
+
+        standings = RankingService.get_standings(season)
+
+        return Response({
+            "season": {
+                "id": season.id,
+                "name": season.name,
+            },
+            "standings": StandingSerializer(standings, many=True).data,
+        })

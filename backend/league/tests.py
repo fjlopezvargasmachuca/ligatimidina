@@ -4,7 +4,7 @@ from accounts.models import Player
 from decks.models import Deck
 from matches.models import Elimination, Match, MatchPlayer
 from .models import LeagueWeek, Season, ScoringRule
-
+from rest_framework.test import APITestCase
 
 class ScoringServiceTest(TestCase):
 
@@ -341,4 +341,65 @@ class RankingServiceTest(TestCase):
             history[0]["eliminations"],
             1,
         )
-    
+class StandingsAPITest(APITestCase):
+
+    def setUp(self):
+        self.player = Player.objects.create_user(
+            username="api_player",
+            password="test1234",
+            display_name="API Player",
+        )
+
+        self.deck = Deck.objects.create(
+            owner=self.player,
+            name="Mazo API",
+            commander="Comandante API",
+        )
+
+        self.season = Season.objects.create(
+            name="Temporada API",
+            start_date="2026-01-01",
+            active=True,
+        )
+
+        self.week = LeagueWeek.objects.create(
+            season=self.season,
+            number=1,
+            date="2026-01-05",
+        )
+
+        self.match = Match.objects.create(
+            league_week=self.week,
+            administrator=self.player,
+            played_at="2026-01-05 20:00",
+            closed=True,
+        )
+
+        MatchPlayer.objects.create(
+            match=self.match,
+            player=self.player,
+            deck=self.deck,
+            final_position=1,
+            points=10,
+        )
+
+    def test_standings_endpoint_returns_active_season(self):
+        response = self.client.get("/api/standings/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["season"]["name"],
+            "Temporada API",
+        )
+        self.assertEqual(
+            len(response.data["standings"]),
+            1,
+        )
+        self.assertEqual(
+            response.data["standings"][0]["display_name"],
+            "API Player",
+        )
+        self.assertEqual(
+            response.data["standings"][0]["points"],
+            10,
+        )    
