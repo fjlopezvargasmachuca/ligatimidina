@@ -69,3 +69,36 @@ class StandingsAPIView(APIView):
             },
             "standings": StandingSerializer(standings, many=True).data,
         })
+
+class CurrentWeekAPIView(APIView):
+    def get(self, request):
+        season = Season.objects.filter(active=True).order_by("-start_date").first()
+
+        if season is None:
+            return Response(
+                {"detail": "No hay ninguna temporada activa."},
+                status=404,
+            )
+
+        current_week = (
+            LeagueWeek.objects
+            .filter(
+                season=season,
+                closed=False,
+            )
+            .select_related("weekly_event")
+            .order_by("-number")
+            .first()
+        )
+
+        if current_week is None:
+            return Response(
+                {"detail": "No hay ninguna jornada abierta."},
+                status=404,
+            )
+
+        from .serializers import LeagueWeekSerializer
+
+        return Response(
+            LeagueWeekSerializer(current_week).data
+        )

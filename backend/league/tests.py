@@ -5,6 +5,7 @@ from decks.models import Deck
 from matches.models import Elimination, Match, MatchPlayer
 from .models import LeagueWeek, Season, ScoringRule
 from rest_framework.test import APITestCase
+from events.models import WeeklyEvent
 
 class ScoringServiceTest(TestCase):
 
@@ -402,4 +403,48 @@ class StandingsAPITest(APITestCase):
         self.assertEqual(
             response.data["standings"][0]["points"],
             10,
+        )
+class CurrentWeekAPITest(APITestCase):
+
+    def setUp(self):
+        self.season = Season.objects.create(
+            name="Temporada API",
+            start_date="2026-01-01",
+            active=True,
+        )
+
+        self.event = WeeklyEvent.objects.create(
+            name="Archenemy",
+            description="Un jugador será elegido Archenemy.",
+            rules="El Archenemy juega contra los demás jugadores.",
+            extra_points=3,
+            active=True,
+        )
+
+        self.week = LeagueWeek.objects.create(
+            season=self.season,
+            number=1,
+            date="2026-01-05",
+            weekly_event=self.event,
+            closed=False,
+        )
+
+    def test_current_week_endpoint_returns_week_and_event(self):
+        response = self.client.get("/api/current-week/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["number"],
+            1,
+        )
+        self.assertFalse(
+            response.data["closed"],
+        )
+        self.assertEqual(
+            response.data["weekly_event"]["name"],
+            "Archenemy",
+        )
+        self.assertEqual(
+            response.data["weekly_event"]["extra_points"],
+            3,
         )    

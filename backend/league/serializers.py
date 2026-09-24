@@ -11,3 +11,20 @@ class StandingSerializer(serializers.Serializer):
     wins = serializers.IntegerField()
     weeks = serializers.IntegerField()
     eliminations = serializers.IntegerField()
+
+
+class WeeklyEventSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    description = serializers.CharField()
+    rules = serializers.CharField()
+    extra_points = serializers.IntegerField()
+    active = serializers.BooleanField()
+
+
+class LeagueWeekSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    number = serializers.IntegerField()
+    date = serializers.DateField()
+    closed = serializers.BooleanField()
+    weekly_event = WeeklyEventSerializer(allow_null=True)
