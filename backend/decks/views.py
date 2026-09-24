@@ -1,3 +1,13 @@
-from django.shortcuts import render
+from rest_framework.generics import ListAPIView
 
-# Create your views here.
+from .models import Deck
+from .serializers import DeckSerializer
+
+
+class DeckListAPIView(ListAPIView):
+    queryset = (
+        Deck.objects
+        .filter(active=True)
+        .select_related("owner")
+    )
+    serializer_class = DeckSerializer
