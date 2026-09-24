@@ -74,6 +74,37 @@ class DeckUpdateAPIView(UpdateAPIView):
             owner=self.request.user
         )
 
+    def perform_update(self, serializer):
+        deck = self.get_object()
+
+        old_deck_url = deck.deck_url
+        old_deckcheck_id = deck.deckcheck_id
+
+        deck = serializer.save()
+
+        deckcheck_changed = (
+            deck.deck_url != old_deck_url
+            or deck.deckcheck_id != old_deckcheck_id
+        )
+
+        if not deckcheck_changed:
+            return
+
+        if deck.deck_url and not deck.deckcheck_id:
+            deckcheck_id = DeckCheckService.get_deck_id_from_url(
+                deck.deck_url
+            )
+
+            if deckcheck_id:
+                deck.deckcheck_id = deckcheck_id
+                deck.save(update_fields=["deckcheck_id"])
+
+        if deck.deckcheck_id:
+            data = DeckCheckService.get_deck(
+                deck_id=deck.deckcheck_id
+            )
+            DeckCheckService.save_analysis(deck, data)
+
 
 class DeckDeleteAPIView(DestroyAPIView):
     queryset = Deck.objects.all()

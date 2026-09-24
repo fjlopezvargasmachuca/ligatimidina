@@ -410,6 +410,80 @@ class DeckUpdateAPITest(APITestCase):
             self.deck.description,
             "Nueva descripción",
         )
+    @patch("decks.views.DeckCheckService.get_deck")
+    @patch("decks.views.DeckCheckService.get_deck_id_from_url")
+    def test_owner_update_deck_url_refreshes_deckcheck_analysis(
+        self,
+        mock_get_deck_id,
+        mock_get_deck,
+    ):
+        mock_get_deck_id.return_value = "deckcheck-456"
+        mock_get_deck.return_value = {
+            "id": "deckcheck-456",
+            "bracket": 4,
+            "name": "Mazo actualizado",
+        }
+
+        self.client.force_authenticate(user=self.owner)
+
+        response = self.client.patch(
+            f"/api/decks/{self.deck.id}/update/",
+            {
+                "deck_url": "https://deckcheck.co/decks/deckcheck-456",
+                "deckcheck_id": "",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        self.deck.refresh_from_db()
+
+        self.assertEqual(
+            self.deck.deckcheck_id,
+            "deckcheck-456",
+        )
+
+        mock_get_deck_id.assert_called_once_with(
+            "https://deckcheck.co/decks/deckcheck-456"
+        )
+
+        mock_get_deck.assert_called_once_with(
+            deck_id="deckcheck-456"
+        )
+
+        analysis = DeckAnalysis.objects.get(deck=self.deck)
+
+        self.assertEqual(analysis.bracket, "4")
+
+        @patch("decks.views.DeckCheckService.get_deck")
+        @patch("decks.views.DeckCheckService.get_deck_id_from_url")
+        def test_owner_update_without_deckcheck_change_does_not_refresh_analysis(
+            self,
+            mock_get_deck_id,
+            mock_get_deck,
+        ):
+            self.client.force_authenticate(user=self.owner)
+
+            response = self.client.patch(
+                f"/api/decks/{self.deck.id}/update/",
+                {
+                    "name": "Nuevo nombre",
+                },
+                format="json",
+            )
+
+            self.assertEqual(response.status_code, 200)
+
+            self.deck.refresh_from_db()
+
+            self.assertEqual(
+                self.deck.name,
+                "Nuevo nombre",
+            )
+
+            mock_get_deck_id.assert_not_called()
+            mock_get_deck.assert_not_called()
 
     def test_user_cannot_update_another_users_deck(self):
         self.client.force_authenticate(user=self.other_player)
