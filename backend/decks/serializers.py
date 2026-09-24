@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Deck
+from .models import Deck, DeckAnalysis
 
 
 class DeckSerializer(serializers.ModelSerializer):
@@ -30,3 +30,15 @@ class DeckSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+class DeckAnalysisSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeckAnalysis
+        fields = [
+            "bracket",
+            "win_conditions",
+            "game_changers",
+            "crispi_score",
+            "analyzed_at",
+        ]
+        read_only_fields = fields

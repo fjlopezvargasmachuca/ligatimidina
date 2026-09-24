@@ -5,7 +5,6 @@ from accounts.models import Player
 from .models import Deck, DeckAnalysis
 from unittest.mock import patch
 from decks.services import DeckCheckService
-from accounts.models import Player
 
 class DeckListAPITest(APITestCase):
 
@@ -29,6 +28,7 @@ class DeckListAPITest(APITestCase):
             commander="Comandante inactivo",
             active=False,
         )
+
 
     def test_deck_list_returns_only_active_decks(self):
         response = self.client.get("/api/decks/")
@@ -99,6 +99,35 @@ class DeckDetailAPITest(APITestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_deck_analysis_returns_analysis(self):
+        analysis = DeckAnalysis.objects.create(
+            deck=self.deck,
+            bracket="3",
+            win_conditions=2,
+            game_changers=1,
+            crispi_score=7.50,
+        )
+
+        response = self.client.get(
+            f"/api/decks/{self.deck.id}/analysis/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["bracket"], "3")
+        self.assertEqual(response.data["win_conditions"], 2)
+        self.assertEqual(response.data["game_changers"], 1)
+        self.assertEqual(
+            str(response.data["crispi_score"]),
+            "7.50",
+        )
+        self.assertNotIn("raw_data", response.data)
+
+    def test_deck_analysis_returns_404_when_analysis_does_not_exist(self):
+        response = self.client.get(
+            f"/api/decks/{self.deck.id}/analysis/"
+        )
+
+        self.assertEqual(response.status_code, 404)
 
 class DeckCreateAPITest(APITestCase):
 

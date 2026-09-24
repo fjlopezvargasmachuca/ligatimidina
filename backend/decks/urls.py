@@ -6,6 +6,7 @@ from .views import (
     DeckListAPIView,
     DeckUpdateAPIView,
     DeckDeleteAPIView,
+    DeckAnalysisDetailAPIView,
 )
 
 
@@ -35,4 +36,9 @@ urlpatterns = [
         DeckDeleteAPIView.as_view(),
         name="api-deck-delete",
     ),
+    path(
+        "<int:pk>/analysis/",
+        DeckAnalysisDetailAPIView.as_view(),
+        name="api-deck-analysis",
+),
 ]

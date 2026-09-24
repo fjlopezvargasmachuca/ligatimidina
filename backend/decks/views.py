@@ -1,12 +1,16 @@
-from rest_framework.generics import ListAPIView
-from rest_framework.generics import RetrieveAPIView
-from .models import Deck
-from .serializers import DeckSerializer
+from rest_framework.generics import (
+    ListAPIView,
+    RetrieveAPIView,
+    CreateAPIView,
+    UpdateAPIView,
+    DestroyAPIView,
+)
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.generics import CreateAPIView
-from rest_framework.generics import UpdateAPIView
-from rest_framework.generics import DestroyAPIView
+from django.shortcuts import get_object_or_404
+from .models import Deck, DeckAnalysis
+from .serializers import DeckSerializer, DeckAnalysisSerializer
 from .services import DeckCheckService
+
 
 class DeckListAPIView(ListAPIView):
     queryset = (
@@ -24,6 +28,17 @@ class DeckDetailAPIView(RetrieveAPIView):
         .select_related("owner")
     )
     serializer_class = DeckSerializer
+
+
+class DeckAnalysisDetailAPIView(RetrieveAPIView):
+    queryset = DeckAnalysis.objects.select_related("deck")
+    serializer_class = DeckAnalysisSerializer
+
+    def get_object(self):
+        return get_object_or_404(
+            self.get_queryset(),
+            deck_id=self.kwargs["pk"],
+        )
 
 class DeckCreateAPIView(CreateAPIView):
     queryset = Deck.objects.all()
@@ -55,7 +70,10 @@ class DeckUpdateAPIView(UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Deck.objects.filter(owner=self.request.user)
+        return Deck.objects.filter(
+            owner=self.request.user
+        )
+
 
 class DeckDeleteAPIView(DestroyAPIView):
     queryset = Deck.objects.all()
@@ -63,4 +81,6 @@ class DeckDeleteAPIView(DestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Deck.objects.filter(owner=self.request.user)
+        return Deck.objects.filter(
+            owner=self.request.user
+        )
