@@ -769,3 +769,113 @@ class DeckCheckServiceTest(TestCase):
         self.assertEqual(analysis.win_conditions, 0)
         self.assertEqual(analysis.game_changers, 0)
         self.assertIsNone(analysis.crispi_score)
+    
+    @patch("decks.services.DeckCheckService.get_deck")
+    def test_analyze_deck_with_existing_deckcheck_id_saves_analysis(
+        self,
+        mock_get_deck,
+    ):
+        deck = Deck.objects.create(
+            owner=Player.objects.create_user(
+                username="analyze_existing",
+                password="testpass123",
+                display_name="Analyze Existing",
+            ),
+            name="Mazo existente",
+            commander="Comandante",
+            deckcheck_id="deckcheck-123",
+        )
+
+        mock_get_deck.return_value = {
+            "id": "deckcheck-123",
+            "bracket": 3,
+            "name": "Mazo existente",
+        }
+
+        analysis = DeckCheckService.analyze_deck(deck)
+
+        self.assertIsNotNone(analysis)
+        self.assertEqual(analysis.deck, deck)
+        self.assertEqual(analysis.bracket, "3")
+
+        mock_get_deck.assert_called_once_with(
+            deck_id="deckcheck-123"
+        )
+
+    @patch("decks.services.DeckCheckService.get_deck")
+    @patch("decks.services.DeckCheckService.get_deck_id_from_url")
+    def test_analyze_deck_gets_id_from_url_and_saves_analysis(
+        self,
+        mock_get_deck_id,
+        mock_get_deck,
+    ):
+        deck = Deck.objects.create(
+            owner=Player.objects.create_user(
+                username="analyze_url",
+                password="testpass123",
+                display_name="Analyze URL",
+            ),
+            name="Mazo desde URL",
+            commander="Comandante",
+            deck_url="https://deckcheck.co/decks/deckcheck-456",
+        )
+
+        mock_get_deck_id.return_value = "deckcheck-456"
+        mock_get_deck.return_value = {
+            "id": "deckcheck-456",
+            "bracket": 4,
+            "name": "Mazo desde URL",
+        }
+
+        analysis = DeckCheckService.analyze_deck(deck)
+
+        deck.refresh_from_db()
+
+        self.assertEqual(
+            deck.deckcheck_id,
+            "deckcheck-456",
+        )
+
+        self.assertIsNotNone(analysis)
+        self.assertEqual(
+            analysis.bracket,
+            "4",
+        )
+
+        mock_get_deck_id.assert_called_once_with(
+            "https://deckcheck.co/decks/deckcheck-456"
+        )
+
+        mock_get_deck.assert_called_once_with(
+            deck_id="deckcheck-456"
+        )
+
+    @patch("decks.services.DeckCheckService.get_deck")
+    @patch("decks.services.DeckCheckService.get_deck_id_from_url")
+    def test_analyze_deck_without_deckcheck_data_returns_none(
+        self,
+        mock_get_deck_id,
+        mock_get_deck,
+    ):
+        deck = Deck.objects.create(
+            owner=Player.objects.create_user(
+                username="analyze_empty",
+                password="testpass123",
+                display_name="Analyze Empty",
+            ),
+            name="Mazo sin DeckCheck",
+            commander="Comandante",
+        )
+
+        analysis = DeckCheckService.analyze_deck(deck)
+
+        self.assertIsNone(analysis)
+
+        mock_get_deck_id.assert_not_called()
+        mock_get_deck.assert_not_called()
+
+        self.assertFalse(
+            DeckAnalysis.objects.filter(
+                deck=deck,
+            ).exists()
+        )
