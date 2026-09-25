@@ -17,15 +17,10 @@ urlpatterns = [
         name="api-decks",
     ),
     path(
-        "<int:pk>/",
-        DeckDetailAPIView.as_view(),
-        name="api-deck-detail",
-    ),
-    path(
         "create/",
         DeckCreateAPIView.as_view(),
         name="api-deck-create",
-)   ,
+    ),
     path(
         "<int:pk>/update/",
         DeckUpdateAPIView.as_view(),
@@ -40,5 +35,10 @@ urlpatterns = [
         "<int:pk>/analysis/",
         DeckAnalysisDetailAPIView.as_view(),
         name="api-deck-analysis",
-),
+    ),
+    path(
+        "<int:pk>/",
+        DeckDetailAPIView.as_view(),
+        name="api-deck-detail",
+    ),
 ]
