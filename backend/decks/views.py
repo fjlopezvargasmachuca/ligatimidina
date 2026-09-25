@@ -17,8 +17,8 @@ class DeckListAPIView(ListAPIView):
     queryset = (
         Deck.objects
         .filter(active=True)
-        .select_related("owner")
-    )
+        .select_related("owner", "analysis")
+        )
     serializer_class = DeckSerializer
 
 
@@ -26,7 +26,7 @@ class DeckDetailAPIView(RetrieveAPIView):
     queryset = (
         Deck.objects
         .filter(active=True)
-        .select_related("owner")
+        .select_related("owner", "analysis")
     )
     serializer_class = DeckSerializer
 
