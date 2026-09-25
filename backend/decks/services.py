@@ -42,3 +42,19 @@ class DeckCheckService:
         )
 
         return analysis
+    
+    @classmethod
+    def analyze_deck(cls, deck):
+        if deck.deck_url and not deck.deckcheck_id:
+            deckcheck_id = cls.get_deck_id_from_url(deck.deck_url)
+
+            if deckcheck_id:
+                deck.deckcheck_id = deckcheck_id
+                deck.save(update_fields=["deckcheck_id"])
+
+        if not deck.deckcheck_id:
+            return None
+
+        data = cls.get_deck(deck_id=deck.deckcheck_id)
+
+        return cls.save_analysis(deck, data)

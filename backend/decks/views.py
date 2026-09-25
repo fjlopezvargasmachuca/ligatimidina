@@ -7,6 +7,7 @@ from rest_framework.generics import (
 )
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+
 from .models import Deck, DeckAnalysis
 from .serializers import DeckSerializer, DeckAnalysisSerializer
 from .services import DeckCheckService
@@ -40,6 +41,7 @@ class DeckAnalysisDetailAPIView(RetrieveAPIView):
             deck_id=self.kwargs["pk"],
         )
 
+
 class DeckCreateAPIView(CreateAPIView):
     queryset = Deck.objects.all()
     serializer_class = DeckSerializer
@@ -47,21 +49,7 @@ class DeckCreateAPIView(CreateAPIView):
 
     def perform_create(self, serializer):
         deck = serializer.save(owner=self.request.user)
-
-        if deck.deck_url and not deck.deckcheck_id:
-            deckcheck_id = DeckCheckService.get_deck_id_from_url(
-                deck.deck_url
-            )
-
-            if deckcheck_id:
-                deck.deckcheck_id = deckcheck_id
-                deck.save(update_fields=["deckcheck_id"])
-
-        if deck.deckcheck_id:
-            data = DeckCheckService.get_deck(
-                deck_id=deck.deckcheck_id
-            )
-            DeckCheckService.save_analysis(deck, data)
+        DeckCheckService.analyze_deck(deck)
 
 
 class DeckUpdateAPIView(UpdateAPIView):
@@ -90,20 +78,7 @@ class DeckUpdateAPIView(UpdateAPIView):
         if not deckcheck_changed:
             return
 
-        if deck.deck_url and not deck.deckcheck_id:
-            deckcheck_id = DeckCheckService.get_deck_id_from_url(
-                deck.deck_url
-            )
-
-            if deckcheck_id:
-                deck.deckcheck_id = deckcheck_id
-                deck.save(update_fields=["deckcheck_id"])
-
-        if deck.deckcheck_id:
-            data = DeckCheckService.get_deck(
-                deck_id=deck.deckcheck_id
-            )
-            DeckCheckService.save_analysis(deck, data)
+        DeckCheckService.analyze_deck(deck)
 
 
 class DeckDeleteAPIView(DestroyAPIView):
