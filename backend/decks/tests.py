@@ -44,6 +44,50 @@ class DeckListAPITest(APITestCase):
         self.assertTrue(deck["active"])
         self.assertNotIn("is_original", deck)
 
+        def test_deck_list_includes_deckcheck_analysis(self):
+            active_deck = Deck.objects.get(
+                name="Mazo activo"
+            )
+
+            DeckAnalysis.objects.create(
+                deck=active_deck,
+                bracket="3",
+                win_conditions=2,
+                game_changers=1,
+                crispi_score=7.50,
+                raw_data={
+                    "id": "deckcheck-123",
+                    "secret": "no-debe-aparecer",
+                },
+            )
+
+            response = self.client.get("/api/decks/")
+
+            self.assertEqual(response.status_code, 200)
+
+            deck = response.data[0]
+
+            self.assertEqual(
+                deck["analysis"]["bracket"],
+                "3",
+            )
+            self.assertEqual(
+                deck["analysis"]["win_conditions"],
+                2,
+            )
+            self.assertEqual(
+                deck["analysis"]["game_changers"],
+                1,
+            )
+            self.assertEqual(
+                str(deck["analysis"]["crispi_score"]),
+                "7.50",
+            )
+            self.assertNotIn(
+                "raw_data",
+                deck["analysis"],
+            )
+
 
 class DeckDetailAPITest(APITestCase):
 
