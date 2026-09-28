@@ -1,0 +1,61 @@
+from django.urls import path
+
+from .views import (
+    EliminationCreateAPIView,
+    EliminationDeleteAPIView,
+    MatchCloseAPIView,
+    MatchCreateAPIView,
+    MatchDeleteAPIView,
+    MatchDetailAPIView,
+    MatchListAPIView,
+    MatchPlayerCreateAPIView,
+    MatchPlayerUpdateAPIView,
+)
+
+urlpatterns = [
+    path(
+        "",
+        MatchListAPIView.as_view(),
+        name="api-match-list",
+    ),
+    path(
+        "create/",
+        MatchCreateAPIView.as_view(),
+        name="api-match-create",
+    ),
+    path(
+        "<int:pk>/",
+        MatchDetailAPIView.as_view(),
+        name="api-match-detail",
+    ),
+    path(
+        "<int:pk>/players/create/",
+        MatchPlayerCreateAPIView.as_view(),
+        name="api-match-player-create",
+    ),
+    path(
+        "<int:match_pk>/players/<int:player_pk>/",
+        MatchPlayerUpdateAPIView.as_view(),
+        name="api-match-player-update",
+    ),
+    path(
+        "<int:pk>/eliminations/create/",
+        EliminationCreateAPIView.as_view(),
+        name="api-elimination-create",
+    ),
+    path(
+        "<int:match_pk>/eliminations/<int:elimination_pk>/",
+        EliminationDeleteAPIView.as_view(),
+        name="api-elimination-delete",
+    ),
+    path(
+        "<int:pk>/close/",
+        MatchCloseAPIView.as_view(),
+        name="api-match-close",
+    ),
+    path(
+        "<int:pk>/delete/",
+        MatchDeleteAPIView.as_view(),
+        name="api-match-delete",
+    ),
+]

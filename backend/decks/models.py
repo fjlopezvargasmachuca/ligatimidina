@@ -30,6 +30,12 @@ class Deck(models.Model):
         verbose_name="URL del mazo"
     )
 
+    card_list = models.TextField(
+        blank=True,
+        verbose_name="Listado de cartas",
+        help_text="Una carta por línea; admite prefijos de cantidad como 1 Sol Ring.",
+    )
+
     deckcheck_id = models.CharField(
         max_length=100,
         blank=True,

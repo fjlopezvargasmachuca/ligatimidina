@@ -34,6 +34,7 @@ class DeckSerializer(serializers.ModelSerializer):
             "commander",
             "description",
             "deck_url",
+            "card_list",
             "deckcheck_id",
             "owner",
             "owner_name",
@@ -48,4 +49,5 @@ class DeckSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "analysis",
+            "deckcheck_id",
         ]

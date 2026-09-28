@@ -4,17 +4,27 @@ from .views import (
     DeckCreateAPIView,
     DeckDetailAPIView,
     DeckListAPIView,
+    MyDeckListAPIView,
     DeckUpdateAPIView,
     DeckDeleteAPIView,
     DeckAnalysisDetailAPIView,
+    CardLookupAPIView,
+    CommanderAutocompleteAPIView,
 )
 
 
 urlpatterns = [
+    path("commanders/autocomplete/", CommanderAutocompleteAPIView.as_view(), name="api-commander-autocomplete"),
+    path("cards/lookup/", CardLookupAPIView.as_view(), name="api-card-lookup"),
     path(
         "",
         DeckListAPIView.as_view(),
         name="api-decks",
+    ),
+    path(
+        "mine/",
+        MyDeckListAPIView.as_view(),
+        name="api-my-decks",
     ),
     path(
         "create/",

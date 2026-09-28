@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Liga Timidina{% endblock %}
+
+{% block content %}
+
+<h1>Liga Timidina</h1>
+
+{% if season %}
+
+    <h2>{{ season.name }}</h2>
+
+    <section>
+        <h3>Clasificación</h3>
+
+        {% if standings %}
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Pos.</th>
+                        <th>Jugador</th>
+                        <th>Puntos</th>
+                        <th>Partidas</th>
+                        <th>Victorias</th>
+                        <th>Eliminaciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for player in standings %}
+                        <tr>
+                            <td>{{ player.position }}</td>
+                            <td>{{ player.display_name }}</td>
+                            <td>{{ player.points }}</td>
+                            <td>{{ player.games }}</td>
+                            <td>{{ player.wins }}</td>
+                            <td>{{ player.eliminations }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        {% else %}
+
+            <p>Todavía no hay resultados.</p>
+
+        {% endif %}
+    </section>
+
+    <aside>
+        <h3>Evento semanal</h3>
+
+        {% if weekly_event %}
+
+            <h4>{{ weekly_event.name }}</h4>
+
+            <p>
+                {{ weekly_event.description }}
+            </p>
+
+            <h4>Reglas</h4>
+
+            <p>
+                {{ weekly_event.rules }}
+            </p>
+
+            {% if weekly_event.extra_points %}
+                <p>
+                    <strong>
+                        Puntos adicionales:
+                    </strong>
+                    {{ weekly_event.extra_points }}
+                </p>
+            {% endif %}
+
+        {% else %}
+
+            <p>
+                No hay evento semanal asignado.
+            </p>
+
+        {% endif %}
+    </aside>
+
+{% else %}
+
+    <p>No hay ninguna temporada activa.</p>
+
+{% endif %}
+
+{% endblock %}

@@ -75,7 +75,7 @@ class MatchPlayerAdmin(admin.ModelAdmin):
     )
     list_filter = (
         "first_play_of_deck",
-        "completed_weekly_event",
+        "participates_in_weekly_event",
         "conceded",
         "concession_penalty",
     )

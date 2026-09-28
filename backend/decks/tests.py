@@ -15,6 +15,8 @@ class DeckListAPITest(APITestCase):
             display_name="Deck Player",
         )
 
+        self.client.force_authenticate(user=self.player)
+
         Deck.objects.create(
             owner=self.player,
             name="Mazo activo",
@@ -97,6 +99,8 @@ class DeckDetailAPITest(APITestCase):
             password="test1234",
             display_name="Detail Player",
         )
+
+        self.client.force_authenticate(user=self.player)
 
         self.deck = Deck.objects.create(
             owner=self.player,
@@ -186,8 +190,8 @@ class DeckCreateAPITest(APITestCase):
             "name": "Mazo nuevo",
             "commander": "Comandante nuevo",
             "description": "Descripción del mazo",
-            "deck_url": "https://example.com/deck",
-            "deckcheck_id": "deckcheck-123",
+            "deck_url": "https://deckcheck.co/app/decklist/deckcheck-123",
+            "deckcheck_id": "user-must-not-control-this",
         }
 
     def test_anonymous_user_cannot_create_deck(self):
@@ -239,7 +243,7 @@ class DeckCreateAPITest(APITestCase):
         )
 
         mock_get_deck.assert_called_once_with(
-            deck_id="deckcheck-123"
+            deck_url="https://deckcheck.co/app/decklist/deckcheck-123"
         )
 
         self.assertTrue(
@@ -278,7 +282,7 @@ class DeckCreateAPITest(APITestCase):
         self.assertFalse(deck.is_original)
 
         mock_get_deck.assert_called_once_with(
-            deck_id="deckcheck-123"
+            deck_url="https://deckcheck.co/app/decklist/deckcheck-123"
         )
 
         self.assertTrue(
@@ -288,129 +292,43 @@ class DeckCreateAPITest(APITestCase):
             ).exists()
         )
 
-    @patch("decks.views.DeckCheckService.get_deck_id_from_url")
-    def test_create_deck_without_deckcheck_id_when_deckcheck_returns_none(
-        self,
-        mock_get_deck_id,
-    ):
-        mock_get_deck_id.return_value = None
-
+    def test_create_deck_without_deckcheck_url_keeps_external_id_empty(self):
         self.client.force_authenticate(user=self.player)
-
-        payload = {
-            **self.payload,
-            "deckcheck_id": "",
-        }
-
-        response = self.client.post(
-            "/api/decks/create/",
-            payload,
-            format="json",
-        )
-
+        payload = {**self.payload, "deck_url": "", "deckcheck_id": "forged-id"}
+        response = self.client.post("/api/decks/create/", payload, format="json")
         self.assertEqual(response.status_code, 201)
-
         deck = Deck.objects.get(name="Mazo nuevo")
-
         self.assertEqual(deck.deckcheck_id, "")
-
-        mock_get_deck_id.assert_called_once_with(
-            self.payload["deck_url"]
-        )
-    @patch("decks.views.DeckCheckService.get_deck")
-    @patch("decks.views.DeckCheckService.get_deck_id_from_url")
-    def test_create_deck_uses_existing_deckcheck_id(
-        self,
-        mock_get_deck_id,
-        mock_get_deck,
-    ):
-        mock_get_deck.return_value = {
-            "id": "deckcheck-123",
-            "bracket": 3,
-            "name": "Mazo nuevo",
-        }
-
-        self.client.force_authenticate(user=self.player)
-
-        response = self.client.post(
-            "/api/decks/create/",
-            self.payload,
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 201)
-
-        deck = Deck.objects.get(name="Mazo nuevo")
-
-        self.assertEqual(
-            deck.deckcheck_id,
-            "deckcheck-123",
-        )
-
-        mock_get_deck_id.assert_not_called()
-
-        mock_get_deck.assert_called_once_with(
-            deck_id="deckcheck-123"
-        )
-
-        self.assertTrue(
-            DeckAnalysis.objects.filter(
-                deck=deck,
-                bracket="3",
-            ).exists()
-        )
+        self.assertEqual(deck.deck_url, "")
 
     @patch("decks.views.DeckCheckService.get_deck")
-    @patch("decks.views.DeckCheckService.get_deck_id_from_url")
-    def test_create_deck_gets_deckcheck_id_from_url(
-        self,
-        mock_get_deck_id,
-        mock_get_deck,
-    ):
-        mock_get_deck_id.return_value = "deckcheck-999"
+    def test_create_deck_ignores_user_supplied_external_id(self, mock_get_deck):
         mock_get_deck.return_value = {
-            "id": "deckcheck-999",
-            "bracket": 3,
-            "name": "Mazo nuevo",
+            "id": "real-external-id", "bracket": 3,
+            "publicUrl": "/app/decklist/real-external-id",
         }
-
         self.client.force_authenticate(user=self.player)
-
-        payload = {
-            **self.payload,
-            "deckcheck_id": "",
-        }
-
-        response = self.client.post(
-            "/api/decks/create/",
-            payload,
-            format="json",
-        )
-
+        response = self.client.post("/api/decks/create/", self.payload, format="json")
         self.assertEqual(response.status_code, 201)
-
         deck = Deck.objects.get(name="Mazo nuevo")
+        self.assertEqual(deck.deckcheck_id, "real-external-id")
+        self.assertEqual(deck.deck_url, "https://deckcheck.co/app/decklist/real-external-id")
+        mock_get_deck.assert_called_once_with(deck_url=self.payload["deck_url"])
 
-        self.assertEqual(
-            deck.deckcheck_id,
-            "deckcheck-999",
-        )
-
-        mock_get_deck_id.assert_called_once_with(
-            self.payload["deck_url"]
-        )
-
-        mock_get_deck.assert_called_once_with(
-            deck_id="deckcheck-999"
-        )
-
-        self.assertTrue(
-            DeckAnalysis.objects.filter(
-                deck=deck,
-                bracket="3",
-            ).exists()
-        )
-
+    @patch("decks.views.DeckCheckService.get_deck")
+    def test_create_deck_gets_deckcheck_id_from_url(self, mock_get_deck):
+        mock_get_deck.return_value = {
+            "id": "deckcheck-999", "dti": {"bracket": 4},
+            "publicUrl": "/app/decklist/deckcheck-999",
+        }
+        self.client.force_authenticate(user=self.player)
+        payload = {**self.payload, "deckcheck_id": "malicious-value"}
+        response = self.client.post("/api/decks/create/", payload, format="json")
+        self.assertEqual(response.status_code, 201)
+        deck = Deck.objects.get(name="Mazo nuevo")
+        self.assertEqual(deck.deckcheck_id, "deckcheck-999")
+        self.assertEqual(deck.analysis.bracket, "4")
+        mock_get_deck.assert_called_once_with(deck_url=self.payload["deck_url"])
 
 class DeckUpdateAPITest(APITestCase):
 
@@ -455,79 +373,21 @@ class DeckUpdateAPITest(APITestCase):
             "Nueva descripción",
         )
     @patch("decks.views.DeckCheckService.get_deck")
-    @patch("decks.views.DeckCheckService.get_deck_id_from_url")
-    def test_owner_update_deck_url_refreshes_deckcheck_analysis(
-        self,
-        mock_get_deck_id,
-        mock_get_deck,
-    ):
-        mock_get_deck_id.return_value = "deckcheck-456"
+    def test_owner_update_deck_url_refreshes_deckcheck_analysis(self, mock_get_deck):
         mock_get_deck.return_value = {
-            "id": "deckcheck-456",
-            "bracket": 4,
-            "name": "Mazo actualizado",
+            "id": "deckcheck-456", "dti": {"bracket": 4},
+            "publicUrl": "/app/decklist/deckcheck-456",
         }
-
         self.client.force_authenticate(user=self.owner)
-
+        url = "https://deckcheck.co/app/decklist/deckcheck-456"
         response = self.client.patch(
-            f"/api/decks/{self.deck.id}/update/",
-            {
-                "deck_url": "https://deckcheck.co/decks/deckcheck-456",
-                "deckcheck_id": "",
-            },
-            format="json",
+            f"/api/decks/{self.deck.id}/update/", {"deck_url": url, "deckcheck_id": "forged"}, format="json"
         )
-
         self.assertEqual(response.status_code, 200)
-
         self.deck.refresh_from_db()
-
-        self.assertEqual(
-            self.deck.deckcheck_id,
-            "deckcheck-456",
-        )
-
-        mock_get_deck_id.assert_called_once_with(
-            "https://deckcheck.co/decks/deckcheck-456"
-        )
-
-        mock_get_deck.assert_called_once_with(
-            deck_id="deckcheck-456"
-        )
-
-        analysis = DeckAnalysis.objects.get(deck=self.deck)
-
-        self.assertEqual(analysis.bracket, "4")
-
-        @patch("decks.views.DeckCheckService.get_deck")
-        @patch("decks.views.DeckCheckService.get_deck_id_from_url")
-        def test_owner_update_without_deckcheck_change_does_not_refresh_analysis(
-            self,
-            mock_get_deck_id,
-            mock_get_deck,
-        ):
-            self.client.force_authenticate(user=self.owner)
-
-            response = self.client.patch(
-                f"/api/decks/{self.deck.id}/update/",
-                {
-                    "name": "Nuevo nombre",
-                },
-                format="json",
-            )
-
-            self.assertEqual(response.status_code, 200)
-
-            self.deck.refresh_from_db()
-
-            self.assertEqual(
-                self.deck.name,
-                "Nuevo nombre",
-            )
-
-            mock_get_deck_id.assert_not_called()
-            mock_get_deck.assert_not_called()
+        self.assertEqual(self.deck.deckcheck_id, "deckcheck-456")
+        mock_get_deck.assert_called_once_with(deck_url=url)
+        self.assertEqual(DeckAnalysis.objects.get(deck=self.deck).bracket, "4")
 
     def test_user_cannot_update_another_users_deck(self):
         self.client.force_authenticate(user=self.other_player)
@@ -803,52 +663,23 @@ class DeckCheckServiceTest(TestCase):
         )
 
     @patch("decks.services.DeckCheckService.get_deck")
-    @patch("decks.services.DeckCheckService.get_deck_id_from_url")
-    def test_analyze_deck_gets_id_from_url_and_saves_analysis(
-        self,
-        mock_get_deck_id,
-        mock_get_deck,
-    ):
+    def test_analyze_deck_gets_id_from_url_and_saves_analysis(self, mock_get_deck):
         deck = Deck.objects.create(
             owner=Player.objects.create_user(
-                username="analyze_url",
-                password="testpass123",
-                display_name="Analyze URL",
+                username="analyze_url", password="testpass123", display_name="Analyze URL",
             ),
-            name="Mazo desde URL",
-            commander="Comandante",
-            deck_url="https://deckcheck.co/decks/deckcheck-456",
+            name="Mazo desde URL", commander="Comandante",
+            deck_url="https://deckcheck.co/app/decklist/deckcheck-456",
         )
-
-        mock_get_deck_id.return_value = "deckcheck-456"
         mock_get_deck.return_value = {
-            "id": "deckcheck-456",
-            "bracket": 4,
-            "name": "Mazo desde URL",
+            "id": "deckcheck-456", "dti": {"bracket": 4},
+            "publicUrl": "/app/decklist/deckcheck-456",
         }
-
         analysis = DeckCheckService.analyze_deck(deck)
-
         deck.refresh_from_db()
-
-        self.assertEqual(
-            deck.deckcheck_id,
-            "deckcheck-456",
-        )
-
-        self.assertIsNotNone(analysis)
-        self.assertEqual(
-            analysis.bracket,
-            "4",
-        )
-
-        mock_get_deck_id.assert_called_once_with(
-            "https://deckcheck.co/decks/deckcheck-456"
-        )
-
-        mock_get_deck.assert_called_once_with(
-            deck_id="deckcheck-456"
-        )
+        self.assertEqual(deck.deckcheck_id, "deckcheck-456")
+        self.assertEqual(analysis.bracket, "4")
+        mock_get_deck.assert_called_once_with(deck_url="https://deckcheck.co/app/decklist/deckcheck-456")
 
     @patch("decks.services.DeckCheckService.get_deck")
     @patch("decks.services.DeckCheckService.get_deck_id_from_url")
@@ -879,3 +710,48 @@ class DeckCheckServiceTest(TestCase):
                 deck=deck,
             ).exists()
         )
+
+    
+
+class MyDeckListAPITest(APITestCase):
+    def setUp(self):
+        self.owner = Player.objects.create_user(
+            username="mine_owner",
+            password="test1234",
+            display_name="Mine Owner",
+        )
+        self.other = Player.objects.create_user(
+            username="mine_other",
+            password="test1234",
+            display_name="Mine Other",
+        )
+        self.active = Deck.objects.create(
+            owner=self.owner,
+            name="Mi activo",
+            commander="Commander A",
+            active=True,
+        )
+        self.inactive = Deck.objects.create(
+            owner=self.owner,
+            name="Mi inactivo",
+            commander="Commander B",
+            active=False,
+        )
+        Deck.objects.create(
+            owner=self.other,
+            name="Ajeno",
+            commander="Commander C",
+            active=True,
+        )
+
+    def test_anonymous_user_cannot_list_own_decks(self):
+        response = self.client.get("/api/decks/mine/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_owner_sees_active_and_inactive_own_decks_only(self):
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.get("/api/decks/mine/")
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["id"] for item in response.data}
+        self.assertEqual(ids, {self.active.id, self.inactive.id})

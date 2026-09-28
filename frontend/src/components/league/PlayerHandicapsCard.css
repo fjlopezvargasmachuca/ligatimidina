@@ -1,0 +1,249 @@
+.profile-handicaps-card {
+  margin-top: 18px;
+  overflow: hidden;
+}
+
+.profile-handicaps-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 18px 0;
+}
+
+.profile-handicaps-header .section-title {
+  padding: 0;
+}
+
+.profile-handicaps-count {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 1px solid #d8b4fe;
+  border-radius: 999px;
+  background: #faf5ff;
+  color: #7e22ce;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.profile-handicaps-list {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+}
+
+.profile-handicap-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #f0d1d1;
+  border-radius: 12px;
+  background: #fffafa;
+}
+
+.profile-handicap-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 15px;
+}
+
+.profile-handicap-main {
+  min-width: 0;
+}
+
+.profile-handicap-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-handicap-title-row strong {
+  display: block;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.profile-handicap-title-row > div > span {
+  display: block;
+  margin-top: 3px;
+  color: #7b808d;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.profile-handicap-status {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.profile-handicap-main > p {
+  margin: 10px 0 0;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.profile-handicap-reason {
+  display: grid;
+  gap: 3px;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: #f7f7fa;
+}
+
+.profile-handicap-reason span,
+.profile-handicap-metrics span {
+  color: #858a97;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.profile-handicap-reason strong {
+  color: #374151;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.profile-handicap-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.profile-handicap-metrics > div {
+  padding: 9px;
+  border-radius: 8px;
+  background: #f7f7fa;
+}
+
+.profile-handicap-metrics strong {
+  display: block;
+  margin-top: 3px;
+  color: #111827;
+  font-size: 13px;
+}
+
+.profile-handicap-help {
+  display: block;
+  margin-top: 10px;
+  color: #777c89;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.profile-handicaps-empty {
+  display: grid;
+  gap: 4px;
+  margin: 18px;
+  padding: 14px;
+  border: 1px dashed #dedfe6;
+  border-radius: 10px;
+  background: #fafafd;
+}
+
+.profile-handicaps-empty strong {
+  color: #30333b;
+  font-size: 13px;
+}
+
+.profile-handicaps-empty span,
+.profile-handicaps-muted {
+  color: #777c89;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.profile-handicaps-muted {
+  padding: 18px;
+}
+
+.profile-handicaps-history {
+  border-top: 1px solid #ececf1;
+  padding: 0 18px;
+}
+
+.profile-handicaps-history summary {
+  padding: 14px 0;
+  color: #4b5563;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.profile-handicaps-used-list {
+  display: grid;
+  gap: 8px;
+  padding: 0 0 16px;
+}
+
+.profile-handicap-used {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f7f7fa;
+}
+
+.profile-handicap-used div {
+  min-width: 0;
+}
+
+.profile-handicap-used strong,
+.profile-handicap-used span {
+  display: block;
+}
+
+.profile-handicap-used strong {
+  color: #374151;
+  font-size: 11px;
+}
+
+.profile-handicap-used div span,
+.profile-handicap-used > span {
+  margin-top: 3px;
+  color: #858a97;
+  font-size: 10px;
+}
+
+@media (max-width: 640px) {
+  .profile-handicaps-header,
+  .profile-handicap-title-row,
+  .profile-handicap-used {
+    display: grid;
+    gap: 10px;
+  }
+
+  .profile-handicaps-count,
+  .profile-handicap-status {
+    justify-self: start;
+  }
+
+  .profile-handicap-metrics {
+    grid-template-columns: 1fr;
+  }
+}

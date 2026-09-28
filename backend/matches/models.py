@@ -91,9 +91,9 @@ class MatchPlayer(models.Model):
         default=False,
         verbose_name="Primera partida con este mazo",
     )
-    completed_weekly_event = models.BooleanField(
+    participates_in_weekly_event = models.BooleanField(
         default=False,
-        verbose_name="Cumplió el evento semanal",
+        verbose_name="Participa en el evento semanal",
     )
     conceded = models.BooleanField(
         default=False,
@@ -102,6 +102,15 @@ class MatchPlayer(models.Model):
     concession_penalty = models.BooleanField(
         default=False,
         verbose_name="Concesión penalizada",
+    )
+    extra_points = models.IntegerField(
+        default=0,
+        verbose_name="Puntos extra",
+        help_text="Permite puntos positivos o negativos registrados por el administrador.",
+    )
+    extra_points_reason = models.TextField(
+        blank=True,
+        verbose_name="Motivo de los puntos extra",
     )
     points = models.IntegerField(
         default=0,
