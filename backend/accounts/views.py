@@ -5,7 +5,7 @@ from django.utils import timezone
 from datetime import timedelta
 from django.views.decorators.csrf import ensure_csrf_cookie
 
-from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView, RetrieveUpdateAPIView
+from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveAPIView, RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -39,6 +39,7 @@ class PlayerDetailAPIView(RetrieveAPIView):
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "login"
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -56,6 +57,7 @@ class LogoutAPIView(APIView):
 
 class RegisterAPIView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "register"
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -134,7 +136,7 @@ class ContactMessageListCreateAPIView(ListCreateAPIView):
         serializer.save(sender=self.request.user)
 
 
-class ContactMessageDetailAPIView(RetrieveUpdateAPIView):
+class ContactMessageDetailAPIView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ContactMessageSerializer
     def get_queryset(self):
@@ -153,6 +155,13 @@ class ContactMessageDetailAPIView(RetrieveUpdateAPIView):
             message.closed = bool(request.data["closed"])
         message.save(update_fields=[field for field in ("read", "closed") if field in request.data])
         return Response(ContactMessageSerializer(message).data)
+
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            return Response({"detail": "Solo administración puede eliminar conversaciones."}, status=403)
+        message = self.get_object()
+        message.delete()
+        return Response(status=204)
 
 
 class ContactReplyAPIView(APIView):

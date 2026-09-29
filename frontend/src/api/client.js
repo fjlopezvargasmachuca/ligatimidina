@@ -80,7 +80,7 @@ async function request(endpoint, options = {}) {
     ...rest,
   })
 
-  let data = null
+  let data
 
   const contentType = response.headers.get('content-type') || ''
 

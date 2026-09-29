@@ -155,8 +155,26 @@ function StatCard({ label, value, detail }) {
   )
 }
 
+function AdminNavIcon({ type }) {
+  const paths = {
+    dashboard: 'M4 12 12 5l8 7v7a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z',
+    users: 'M8 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2 21v-2a6 6 0 0 1 12 0v2m1 0v-1a5 5 0 0 1 7-4.6',
+    seasons: 'M6 3v3m12-3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Zm3 8h3v3H8zm5 0h3v3h-3z',
+    weeks: 'M5 4h14v16H5zM8 8h8M8 12h8M8 16h5',
+    events: 'm12 3 1.7 4.3L18 9l-4.3 1.7L12 15l-1.7-4.3L6 9l4.3-1.7L12 3Zm6 11 .9 2.1L21 17l-2.1.9L18 20l-.9-2.1L15 17l2.1-.9L18 14Z',
+    scoring: 'M7 4h10v4a5 5 0 0 1-10 0V4Zm0 2H4v2a4 4 0 0 0 4 4m9-6h3v2a4 4 0 0 1-4 4M12 13v5m-4 2h8',
+    handicaps: 'M12 3v18M5 7h14M7 7l-4 7h8L7 7Zm10 0-4 7h8l-4-7Z',
+    matches: 'M7 4h10l2 13H5L7 4Zm2 4h6m-5 4h4M8 20h8',
+    settings: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0-5v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4',
+  }
+  return <svg className="admin-nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d={paths[type] || paths.dashboard} /></svg>
+}
+
 function AdminDashboard({ currentUser }) {
   const [activeSection, setActiveSection] = useState('dashboard')
+  const [leagueSettings, setLeagueSettings] = useState(null)
+  const [prizePool, setPrizePool] = useState(null)
+  const [settingsForm, setSettingsForm] = useState({ mode: 'PREMIUM', subscription_fee: '10.00', prize_pool_percent: '20.00', paypal_url: 'https://paypal.me/machukador/10', free_league_notice: '' })
 
   const [seasons, setSeasons] = useState([])
   const [weeks, setWeeks] = useState([])
@@ -170,7 +188,6 @@ function AdminDashboard({ currentUser }) {
   const [selectedMatch, setSelectedMatch] = useState(null)
 
   const [loading, setLoading] = useState(true)
-  const [sectionLoading, setSectionLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const [error, setError] = useState('')
@@ -186,6 +203,8 @@ function AdminDashboard({ currentUser }) {
     EMPTY_SCORING_RULE_FORM,
   )
   const [editingScoringRuleId, setEditingScoringRuleId] = useState(null)
+  const [editingSeasonId, setEditingSeasonId] = useState(null)
+  const [editingEventId, setEditingEventId] = useState(null)
   const [userForm, setUserForm] = useState(EMPTY_ADMIN_USER_FORM)
   const [editingUserId, setEditingUserId] = useState(null)
 
@@ -199,7 +218,6 @@ function AdminDashboard({ currentUser }) {
     award_reason: '',
   })
   const [handicapDefinitionForm, setHandicapDefinitionForm] = useState({
-    code: '',
     name: '',
     description: '',
     category: 'WEAK',
@@ -223,7 +241,6 @@ function AdminDashboard({ currentUser }) {
 
   const [weekForm, setWeekForm] = useState({
     season: '',
-    number: '',
     date: '',
     weekly_event: '',
   })
@@ -317,6 +334,25 @@ function AdminDashboard({ currentUser }) {
       setMatches(asArray(matchesResponse))
 
       try {
+        const [settingsResponse, poolResponse] = await Promise.all([
+          api.get('/league/settings/'),
+          api.get('/league/prize-pool/').catch(() => null),
+        ])
+        setLeagueSettings(settingsResponse)
+        setSettingsForm({
+          mode: settingsResponse.mode,
+          subscription_fee: settingsResponse.subscription_fee,
+          prize_pool_percent: settingsResponse.prize_pool_percent,
+          paypal_url: settingsResponse.paypal_url,
+          free_league_notice: settingsResponse.free_league_notice,
+        })
+        setPrizePool(poolResponse?.enabled === false ? null : poolResponse)
+      } catch {
+        setLeagueSettings(null)
+        setPrizePool(null)
+      }
+
+      try {
         const currentWeekResponse = await api.get(
           '/league/current-week/',
         )
@@ -332,7 +368,6 @@ function AdminDashboard({ currentUser }) {
   }
 
   async function refreshSection() {
-    setSectionLoading(true)
     setError('')
 
     try {
@@ -379,6 +414,22 @@ function AdminDashboard({ currentUser }) {
       if (activeSection === 'events') {
         const response = await api.get('/events/')
         setEvents(asArray(response))
+      }
+
+      if (activeSection === 'settings') {
+        const [settingsResponse, poolResponse] = await Promise.all([
+          api.get('/league/settings/'),
+          api.get('/league/prize-pool/').catch(() => null),
+        ])
+        setLeagueSettings(settingsResponse)
+        setSettingsForm({
+          mode: settingsResponse.mode,
+          subscription_fee: settingsResponse.subscription_fee,
+          prize_pool_percent: settingsResponse.prize_pool_percent,
+          paypal_url: settingsResponse.paypal_url,
+          free_league_notice: settingsResponse.free_league_notice,
+        })
+        setPrizePool(poolResponse?.enabled === false ? null : poolResponse)
       }
 
       if (activeSection === 'scoring') {
@@ -444,8 +495,6 @@ function AdminDashboard({ currentUser }) {
       }
     } catch (requestError) {
       setError(getErrorMessage(requestError))
-    } finally {
-      setSectionLoading(false)
     }
   }
 
@@ -543,6 +592,7 @@ function AdminDashboard({ currentUser }) {
     try {
       const response = await api.get(`/matches/${matchId}/`)
       setSelectedMatch(response)
+      setActiveSection('matches')
     } catch (requestError) {
       showError(requestError)
     }
@@ -788,6 +838,22 @@ function AdminDashboard({ currentUser }) {
     }
   }
 
+  async function deleteScoringRule(rule) {
+    if (!window.confirm(`¿Eliminar la regla “${rule.name}”? Solo se podrá borrar si aún no forma parte de una jornada cerrada.`)) return
+    setSaving(true)
+    setError('')
+    try {
+      await api.delete(`/league/scoring-rules/${rule.id}/`)
+      setScoringRules(asArray(await api.get('/league/scoring-rules/')))
+      if (Number(editingScoringRuleId) === Number(rule.id)) resetScoringRuleForm()
+      showSuccess('Regla de puntuación eliminada.')
+    } catch (requestError) {
+      showError(requestError)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function toggleScoringRule(rule) {
     setSaving(true)
     setError('')
@@ -827,7 +893,6 @@ function AdminDashboard({ currentUser }) {
   function resetHandicapDefinitionForm() {
     setEditingHandicapDefinitionId(null)
     setHandicapDefinitionForm({
-      code: '',
       name: '',
       description: '',
       category: 'WEAK',
@@ -845,7 +910,6 @@ function AdminDashboard({ currentUser }) {
   function editHandicapDefinition(definition) {
     setEditingHandicapDefinitionId(definition.id)
     setHandicapDefinitionForm({
-      code: definition.code || '',
       name: definition.name || '',
       description: definition.description || '',
       category: definition.category || 'WEAK',
@@ -867,7 +931,6 @@ function AdminDashboard({ currentUser }) {
 
     try {
       const payload = {
-        code: handicapDefinitionForm.code.trim(),
         name: handicapDefinitionForm.name.trim(),
         description: handicapDefinitionForm.description.trim(),
         category: handicapDefinitionForm.category,
@@ -897,6 +960,68 @@ function AdminDashboard({ currentUser }) {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function deleteHandicapDefinition(definition) {
+    if (!window.confirm(`¿Eliminar “${definition.name}”? Solo se podrá borrar si todavía no forma parte del histórico.`)) return
+    setSaving(true)
+    try {
+      await api.delete(`/handicaps/definitions/${definition.id}/`)
+      setHandicapDefinitions(asArray(await api.get('/handicaps/definitions/')))
+      showSuccess('Handicap eliminado del catálogo.')
+    } catch (requestError) { showError(requestError) } finally { setSaving(false) }
+  }
+
+  async function editHandicapGrant(grant) {
+    const awardReason = window.prompt('Motivo del premio:', grant.award_reason || '')
+    if (awardReason === null || !awardReason.trim()) return
+    setSaving(true)
+    try {
+      await api.patch(`/handicaps/grants/${grant.id}/`, { award_reason: awardReason.trim() })
+      setHandicapGrants(asArray(await api.get('/handicaps/grants/')))
+      showSuccess('Premio actualizado.')
+    } catch (requestError) { showError(requestError) } finally { setSaving(false) }
+  }
+
+  async function deleteHandicapGrant(grant) {
+    if (!window.confirm('¿Eliminar este premio concedido?')) return
+    setSaving(true)
+    try {
+      await api.delete(`/handicaps/grants/${grant.id}/`)
+      setHandicapGrants(asArray(await api.get('/handicaps/grants/')))
+      showSuccess('Premio eliminado.')
+    } catch (requestError) { showError(requestError) } finally { setSaving(false) }
+  }
+
+  async function editAssignedHandicap(handicap) {
+    const awardReason = window.prompt('Motivo original:', handicap.award_reason || '')
+    if (awardReason === null) return
+    const grace = window.prompt('Partidas de gracia:', String(handicap.grace_games_snapshot ?? 0))
+    if (grace === null) return
+    const penalty = window.prompt('Puntos de penalización por partida:', String(handicap.penalty_points_snapshot ?? 0))
+    if (penalty === null) return
+    setSaving(true)
+    try {
+      await api.patch(`/handicaps/${handicap.id}/`, {
+        award_reason: awardReason.trim(),
+        grace_games_snapshot: Number(grace),
+        penalty_points_snapshot: Number(penalty),
+      })
+      setAssignedHandicaps(asArray(await api.get('/handicaps/')))
+      showSuccess('No te flipes actualizado.')
+    } catch (requestError) { showError(requestError) } finally { setSaving(false) }
+  }
+
+  async function deleteAssignedHandicap(handicap) {
+    if (!window.confirm('¿Eliminar este No te flipes lanzado? Si aún no se ha canjeado, el poder volverá a quedar disponible.')) return
+    setSaving(true)
+    try {
+      await api.delete(`/handicaps/${handicap.id}/`)
+      const [handicapsResponse, grantsResponse] = await Promise.all([api.get('/handicaps/'), api.get('/handicaps/grants/')])
+      setAssignedHandicaps(asArray(handicapsResponse))
+      setHandicapGrants(asArray(grantsResponse))
+      showSuccess('No te flipes eliminado.')
+    } catch (requestError) { showError(requestError) } finally { setSaving(false) }
   }
 
   async function saveHandicapCategory(category) {
@@ -1072,10 +1197,24 @@ function AdminDashboard({ currentUser }) {
     }
   }
 
-  async function createSeason(event) {
+  function editSeason(season) {
+    setEditingSeasonId(season.id)
+    setSeasonForm({
+      name: season.name || '',
+      start_date: season.start_date || '',
+      end_date: season.end_date || '',
+      active: Boolean(season.active),
+    })
+  }
+
+  function cancelSeasonEdit() {
+    setEditingSeasonId(null)
+    setSeasonForm({ name: '', start_date: '', end_date: '', active: true })
+  }
+
+  async function saveSeason(event) {
     event.preventDefault()
     setSaving(true)
-
     try {
       const payload = {
         name: seasonForm.name,
@@ -1083,20 +1222,100 @@ function AdminDashboard({ currentUser }) {
         end_date: seasonForm.end_date || null,
         active: seasonForm.active,
       }
+      if (editingSeasonId) {
+        await api.patch(`/league/seasons/${editingSeasonId}/`, payload)
+        showSuccess('Temporada actualizada correctamente.')
+      } else {
+        await api.post('/league/seasons/create/', payload)
+        showSuccess('Temporada creada correctamente.')
+      }
+      cancelSeasonEdit()
+      setSeasons(asArray(await api.get('/league/seasons/')))
+      setWeeks(asArray(await api.get('/league/weeks/')))
+    } catch (requestError) {
+      showError(requestError)
+    } finally { setSaving(false) }
+  }
 
-      await api.post('/league/seasons/create/', payload)
+  async function deleteSeason(season) {
+    if (!window.confirm(`¿Eliminar la temporada “${season.name}”? Solo se permite si todavía no contiene partidas.`)) return
+    setSaving(true)
+    try {
+      await api.delete(`/league/seasons/${season.id}/`)
+      setSeasons(asArray(await api.get('/league/seasons/')))
+      setWeeks(asArray(await api.get('/league/weeks/')))
+      if (editingSeasonId === season.id) cancelSeasonEdit()
+      showSuccess('Temporada eliminada.')
+    } catch (requestError) { showError(requestError) } finally { setSaving(false) }
+  }
 
-      setSeasonForm({
-        name: '',
-        start_date: '',
-        end_date: '',
-        active: true,
+  async function finalizeSeason(season) {
+    if (!window.confirm(`¿Finalizar “${season.name}”? La clasificación, penalizaciones, bonificaciones y No te flipes de esta temporada quedarán como histórico y la siguiente temporada empezará limpia.`)) return
+    setSaving(true)
+    try {
+      await api.post(`/league/seasons/${season.id}/finalize/`)
+      setSeasons(asArray(await api.get('/league/seasons/')))
+      showSuccess('Temporada finalizada y protegida como histórico.')
+    } catch (requestError) { showError(requestError) } finally { setSaving(false) }
+  }
+
+  async function saveLeagueSettings(event) {
+    event.preventDefault()
+    setSaving(true)
+    try {
+      const response = await api.patch('/league/settings/', {
+        mode: settingsForm.mode,
+        subscription_fee: Number(settingsForm.subscription_fee),
+        prize_pool_percent: Number(settingsForm.prize_pool_percent),
+        paypal_url: settingsForm.paypal_url,
+        free_league_notice: settingsForm.free_league_notice,
       })
+      setLeagueSettings(response)
+      const poolResponse = await api.get('/league/prize-pool/').catch(() => null)
+      setPrizePool(poolResponse?.enabled === false ? null : poolResponse)
+      showSuccess('Configuración de la liga actualizada.')
+    } catch (requestError) { showError(requestError) } finally { setSaving(false) }
+  }
 
-      const response = await api.get('/league/seasons/')
-      setSeasons(asArray(response))
 
-      showSuccess('Temporada creada correctamente.')
+  function resetEventForm() {
+    setEditingEventId(null)
+    setEventForm({ name: '', description: '', rules: '', extra_points: 0, active: true })
+  }
+
+  function editEvent(item) {
+    setEditingEventId(item.id)
+    setEventForm({
+      name: item.name || '',
+      description: item.description || '',
+      rules: item.rules || '',
+      extra_points: item.extra_points ?? 0,
+      active: item.active !== false,
+    })
+  }
+
+  async function saveEvent(event) {
+    event.preventDefault()
+    setSaving(true)
+
+    try {
+      const payload = {
+        name: eventForm.name,
+        description: eventForm.description,
+        rules: eventForm.rules,
+        extra_points: Number(eventForm.extra_points),
+        active: eventForm.active,
+      }
+      if (editingEventId) {
+        await api.patch(`/events/${editingEventId}/`, payload)
+        showSuccess('Evento semanal actualizado.')
+      } else {
+        await api.post('/events/create/', payload)
+        showSuccess('Evento semanal creado correctamente.')
+      }
+      resetEventForm()
+      setEvents(asArray(await api.get('/events/')))
+      setWeeks(asArray(await api.get('/league/weeks/')))
     } catch (requestError) {
       showError(requestError)
     } finally {
@@ -1104,31 +1323,15 @@ function AdminDashboard({ currentUser }) {
     }
   }
 
-  async function createEvent(event) {
-    event.preventDefault()
+  async function deleteEvent(item) {
+    if (!window.confirm(`¿Eliminar el evento “${item.name}”? Si está en una jornada abierta se quitará de esa jornada; si ya forma parte de una jornada cerrada no se permitirá.`)) return
     setSaving(true)
-
     try {
-      await api.post('/events/create/', {
-        name: eventForm.name,
-        description: eventForm.description,
-        rules: eventForm.rules,
-        extra_points: Number(eventForm.extra_points),
-        active: eventForm.active,
-      })
-
-      setEventForm({
-        name: '',
-        description: '',
-        rules: '',
-        extra_points: 0,
-        active: true,
-      })
-
-      const response = await api.get('/events/')
-      setEvents(asArray(response))
-
-      showSuccess('Evento semanal creado correctamente.')
+      await api.delete(`/events/${item.id}/`)
+      if (Number(editingEventId) === Number(item.id)) resetEventForm()
+      setEvents(asArray(await api.get('/events/')))
+      setWeeks(asArray(await api.get('/league/weeks/')))
+      showSuccess('Evento semanal eliminado.')
     } catch (requestError) {
       showError(requestError)
     } finally {
@@ -1141,18 +1344,15 @@ function AdminDashboard({ currentUser }) {
     setSaving(true)
 
     try {
-      await api.post('/league/weeks/create/', {
+      const payload = {
         season: Number(weekForm.season),
-        number: Number(weekForm.number),
         date: weekForm.date,
-        weekly_event: weekForm.weekly_event
-          ? Number(weekForm.weekly_event)
-          : null,
-      })
+      }
+      if (weekForm.weekly_event) payload.weekly_event = Number(weekForm.weekly_event)
+      await api.post('/league/weeks/create/', payload)
 
       setWeekForm({
         season: '',
-        number: '',
         date: '',
         weekly_event: '',
       })
@@ -1261,7 +1461,7 @@ function AdminDashboard({ currentUser }) {
               }
               onClick={() => selectSection('dashboard')}
             >
-              <span>⌂</span>
+              <AdminNavIcon type="dashboard" />
               Dashboard
             </button>
 
@@ -1273,7 +1473,7 @@ function AdminDashboard({ currentUser }) {
               }
               onClick={() => selectSection('users')}
             >
-              <span>♟</span>
+              <AdminNavIcon type="users" />
               Usuarios
             </button>
 
@@ -1285,7 +1485,7 @@ function AdminDashboard({ currentUser }) {
               }
               onClick={() => selectSection('seasons')}
             >
-              <span>◷</span>
+              <AdminNavIcon type="seasons" />
               Temporadas
             </button>
 
@@ -1297,7 +1497,7 @@ function AdminDashboard({ currentUser }) {
               }
               onClick={() => selectSection('weeks')}
             >
-              <span>▦</span>
+              <AdminNavIcon type="weeks" />
               Jornadas
             </button>
 
@@ -1309,7 +1509,7 @@ function AdminDashboard({ currentUser }) {
               }
               onClick={() => selectSection('events')}
             >
-              <span>✦</span>
+              <AdminNavIcon type="events" />
               Eventos
             </button>
 
@@ -1321,7 +1521,7 @@ function AdminDashboard({ currentUser }) {
               }
               onClick={() => selectSection('scoring')}
             >
-              <span>＋</span>
+              <AdminNavIcon type="scoring" />
               Puntuación
             </button>
 
@@ -1333,8 +1533,16 @@ function AdminDashboard({ currentUser }) {
               }
               onClick={() => selectSection('handicaps')}
             >
-              <span>⚖</span>
+              <AdminNavIcon type="handicaps" />
               No te flipes
+            </button>
+
+            <button
+              className={activeSection === 'settings' ? 'admin-nav-item active' : 'admin-nav-item'}
+              onClick={() => selectSection('settings')}
+            >
+              <AdminNavIcon type="settings" />
+              Liga y premios
             </button>
 
             <button
@@ -1345,7 +1553,7 @@ function AdminDashboard({ currentUser }) {
               }
               onClick={() => selectSection('matches')}
             >
-              <span>♠</span>
+              <AdminNavIcon type="matches" />
               Partidas
             </button>
           </nav>
@@ -1365,17 +1573,11 @@ function AdminDashboard({ currentUser }) {
                 {activeSection === 'events' && 'Eventos semanales'}
                 {activeSection === 'scoring' && 'Puntuación'}
                 {activeSection === 'handicaps' && 'No te flipes'}
+                {activeSection === 'settings' && 'Liga y premios'}
                 {activeSection === 'matches' && 'Partidas'}
               </h1>
             </div>
 
-            <button
-              className="admin-button secondary"
-              onClick={refreshSection}
-              disabled={sectionLoading || saving}
-            >
-              {sectionLoading ? 'Actualizando…' : '↻ Actualizar'}
-            </button>
           </header>
 
           {error && (
@@ -1405,6 +1607,16 @@ function AdminDashboard({ currentUser }) {
             />
           )}
 
+          {activeSection === 'settings' && (
+            <LeagueSettingsSection
+              pool={prizePool}
+              form={settingsForm}
+              setForm={setSettingsForm}
+              onSubmit={saveLeagueSettings}
+              saving={saving}
+            />
+          )}
+
           {activeSection === 'users' && (
             <UsersSection
               users={adminPlayers}
@@ -1419,6 +1631,7 @@ function AdminDashboard({ currentUser }) {
               onCancel={resetUserForm}
               onToggleActive={toggleUserActive}
               onToggleAdmin={toggleUserAdmin}
+              leagueSettings={leagueSettings}
             />
           )}
 
@@ -1427,8 +1640,13 @@ function AdminDashboard({ currentUser }) {
               seasons={seasons}
               form={seasonForm}
               setForm={setSeasonForm}
-              onSubmit={createSeason}
+              onSubmit={saveSeason}
               saving={saving}
+              editingSeasonId={editingSeasonId}
+              onEdit={editSeason}
+              onCancel={cancelSeasonEdit}
+              onDelete={deleteSeason}
+              onFinalize={finalizeSeason}
             />
           )}
 
@@ -1453,8 +1671,12 @@ function AdminDashboard({ currentUser }) {
               events={events}
               form={eventForm}
               setForm={setEventForm}
-              onSubmit={createEvent}
+              onSubmit={saveEvent}
               saving={saving}
+              editingEventId={editingEventId}
+              onEdit={editEvent}
+              onDelete={deleteEvent}
+              onCancel={resetEventForm}
             />
           )}
 
@@ -1470,6 +1692,7 @@ function AdminDashboard({ currentUser }) {
               onSubmit={saveScoringRule}
               onEdit={startEditingScoringRule}
               onToggle={toggleScoringRule}
+              onDelete={deleteScoringRule}
               onCancel={resetScoringRuleForm}
             />
           )}
@@ -1491,8 +1714,13 @@ function AdminDashboard({ currentUser }) {
               onAssign={assignHandicap}
               onSaveDefinition={saveHandicapDefinition}
               onEditDefinition={editHandicapDefinition}
+              onDeleteDefinition={deleteHandicapDefinition}
               onCancelDefinition={resetHandicapDefinitionForm}
               onSaveCategory={saveHandicapCategory}
+              onEditGrant={editHandicapGrant}
+              onDeleteGrant={deleteHandicapGrant}
+              onEditAssigned={editAssignedHandicap}
+              onDeleteAssigned={deleteAssignedHandicap}
             />
           )}
 
@@ -1530,6 +1758,59 @@ function AdminDashboard({ currentUser }) {
   )
 }
 
+function LeagueSettingsSection({ pool, form, setForm, onSubmit, saving }) {
+  const premiumMode = form.mode === 'PREMIUM'
+  return (
+    <div className="admin-content">
+      <div className="admin-two-column">
+        <section className="admin-card">
+          <SectionHeader eyebrow="Modalidad" title="Funcionamiento de la liga" description="Cambia entre liga gratuita y liga con suscripción sin alterar el histórico de temporadas." />
+          <form className="admin-form" onSubmit={onSubmit}>
+            <label>
+              Modalidad actual
+              <select value={form.mode} onChange={(event) => setForm({ ...form, mode: event.target.value })}>
+                <option value="FREE">Liga gratuita · hasta 3 partidas por jornada</option>
+                <option value="PREMIUM">Liga con suscripción · estándar 1 / premium 3</option>
+              </select>
+            </label>
+            <div className="admin-form-grid">
+              <label>
+                Cuota premium mensual (€)
+                <input type="number" min="0" step="0.01" value={form.subscription_fee} onChange={(event) => setForm({ ...form, subscription_fee: event.target.value })} disabled={!premiumMode} />
+              </label>
+              <label>
+                Porcentaje para el bote (%)
+                <input type="number" min="0" max="100" step="0.01" value={form.prize_pool_percent} onChange={(event) => setForm({ ...form, prize_pool_percent: event.target.value })} disabled={!premiumMode} />
+                <small>Por defecto 20%. Puedes adaptarlo cada mes para cubrir servidor, dominio y otros costes fijos.</small>
+              </label>
+            </div>
+            <label>
+              Enlace de pago
+              <input type="url" value={form.paypal_url} onChange={(event) => setForm({ ...form, paypal_url: event.target.value })} disabled={!premiumMode} />
+            </label>
+            <label>
+              Aviso de convivencia para liga gratuita
+              <textarea rows="5" value={form.free_league_notice} onChange={(event) => setForm({ ...form, free_league_notice: event.target.value })} />
+            </label>
+            <button className="admin-button primary" type="submit" disabled={saving}>{saving ? 'Guardando…' : 'Guardar configuración'}</button>
+          </form>
+        </section>
+        <section className="admin-card">
+          <SectionHeader eyebrow="Bote" title="Premios del mes" description={premiumMode ? 'El bote acumula la reserva del mes sobre el saldo heredado del mes anterior.' : 'El bote queda oculto mientras la liga sea gratuita.'} />
+          {!premiumMode || !pool ? <div className="admin-empty">Liga gratuita: no se muestran cuotas ni bote de premios.</div> : (
+            <div className="admin-prize-summary">
+              <StatCard label="Premium este mes" value={pool.premium_participants || 0} detail={`${pool.subscription_fee || form.subscription_fee} € / mes`} />
+              <StatCard label="Aportación del mes" value={`${Number(pool.monthly_contribution || 0).toFixed(2)} €`} detail={`${pool.prize_pool_percent || form.prize_pool_percent}% reservado`} />
+              <StatCard label="Bote acumulado" value={`${Number(pool.total || 0).toFixed(2)} €`} detail={`Heredado: ${Number(pool.carry_in || 0).toFixed(2)} €`} />
+              <div className="admin-info-strip">Reparto mostrado al público: 1.º 50%, 2.º 30% y 3.º 20%. Los premios se entregan en material de Magic proporcionado por la tienda.</div>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  )
+}
+
 function UsersSection({
   users,
   form,
@@ -1543,6 +1824,7 @@ function UsersSection({
   onCancel,
   onToggleActive,
   onToggleAdmin,
+  leagueSettings,
 }) {
   const [query, setQuery] = useState('')
 
@@ -1691,15 +1973,15 @@ function UsersSection({
 
               <label>
                 Modalidad
-                <select name="membership_plan" value={form.membership_plan || 'FREE'} onChange={onFieldChange}>
-                  <option value="FREE">Gratuita · 1 partida/jornada</option>
-                  <option value="SUPPORTER">Suscripción · hasta 3 partidas/jornada</option>
+                <select name="membership_plan" value={form.membership_plan || 'FREE'} onChange={onFieldChange} disabled={leagueSettings?.mode === 'FREE'}>
+                  <option value="FREE">Estándar · 1 partida/jornada</option>
+                  <option value="SUPPORTER">Premium · hasta 3 partidas/jornada</option>
                 </select>
               </label>
 
               <label>
                 Suscripción abonada hasta
-                <input name="subscription_paid_until" type="date" value={form.subscription_paid_until || ''} onChange={onFieldChange} />
+                <input name="subscription_paid_until" type="date" value={form.subscription_paid_until || ''} onChange={onFieldChange} disabled={leagueSettings?.mode === 'FREE'} />
               </label>
             </div>
 
@@ -1764,7 +2046,7 @@ function UsersSection({
                           <strong>{player.display_name || player.username}</strong>
                           <small>@{player.username}{isSelf ? ' · tú' : ''}</small>
                         </td>
-                        <td>{player.email || '—'}<small>{player.membership_plan === 'SUPPORTER' ? `Suscripción${player.subscription_paid_until ? ` hasta ${player.subscription_paid_until}` : ''}` : 'Gratuita'}</small></td>
+                        <td>{player.email || '—'}<small>{leagueSettings?.mode === 'FREE' ? 'Liga gratuita' : player.membership_plan === 'SUPPORTER' ? `Premium${player.subscription_paid_until ? ` hasta ${player.subscription_paid_until}` : ''}` : 'Estándar'}</small></td>
                         <td>
                           {player.is_superuser ? (
                             <StatusBadge tone="warning">Superadmin</StatusBadge>
@@ -1879,7 +2161,7 @@ function DashboardSection({
           <SectionHeader
             eyebrow="Ahora"
             title="Jornada actual"
-            description="Estado de la jornada que el backend considera abierta."
+            description="Jornada actualmente abierta para registrar partidas."
           />
 
           {currentWeek ? (
@@ -2007,136 +2289,63 @@ function SeasonsSection({
   setForm,
   onSubmit,
   saving,
+  editingSeasonId,
+  onEdit,
+  onCancel,
+  onDelete,
+  onFinalize,
 }) {
   return (
     <div className="admin-content">
       <div className="admin-two-column">
         <section className="admin-card">
           <SectionHeader
-            eyebrow="Nueva temporada"
-            title="Crear temporada"
-            description="Define el periodo de una temporada de Liga Timidina."
+            eyebrow={editingSeasonId ? 'Corrección' : 'Nueva temporada'}
+            title={editingSeasonId ? 'Editar temporada' : 'Crear temporada'}
+            description="Las jornadas se numeran automáticamente a partir de las fechas de la temporada."
           />
-
-          <form
-            className="admin-form"
-            onSubmit={onSubmit}
-          >
-            <label>
-              Nombre
-              <input
-                type="text"
-                value={form.name}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    name: event.target.value,
-                  })
-                }
-                placeholder="Temporada 2026"
-                required
-              />
-            </label>
-
+          <form className="admin-form" onSubmit={onSubmit}>
+            <label>Nombre<input type="text" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Liga Timidina 2026" required /></label>
             <div className="admin-form-grid">
-              <label>
-                Fecha de inicio
-                <input
-                  type="date"
-                  value={form.start_date}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      start_date: event.target.value,
-                    })
-                  }
-                  required
-                />
-              </label>
-
-              <label>
-                Fecha de fin
-                <input
-                  type="date"
-                  value={form.end_date}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      end_date: event.target.value,
-                    })
-                  }
-                />
-              </label>
+              <label>Fecha de inicio<input type="date" value={form.start_date} onChange={(event) => setForm({ ...form, start_date: event.target.value })} required /></label>
+              <label>Fecha de fin<input type="date" value={form.end_date} onChange={(event) => setForm({ ...form, end_date: event.target.value })} /></label>
             </div>
-
-            <label className="admin-checkbox">
-              <input
-                type="checkbox"
-                checked={form.active}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    active: event.target.checked,
-                  })
-                }
-              />
-              Activar esta temporada
-            </label>
-
-            <button
-              className="admin-button primary"
-              type="submit"
-              disabled={saving}
-            >
-              {saving ? 'Creando…' : 'Crear temporada'}
-            </button>
+            <label className="admin-checkbox"><input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} />Activar esta temporada</label>
+            <div className="admin-actions">
+              <button className="admin-button primary" type="submit" disabled={saving}>{saving ? 'Guardando…' : editingSeasonId ? 'Guardar cambios' : 'Crear temporada'}</button>
+              {editingSeasonId && <button className="admin-button secondary" type="button" onClick={onCancel} disabled={saving}>Cancelar</button>}
+            </div>
           </form>
         </section>
 
         <section className="admin-card">
-          <SectionHeader
-            eyebrow="Histórico"
-            title="Temporadas"
-            description="Temporadas conocidas por el sistema."
-          />
-
-          {seasons.length === 0 ? (
-            <div className="admin-empty">
-              No hay temporadas.
-            </div>
-          ) : (
+          <SectionHeader eyebrow="Histórico" title="Temporadas" description="Puedes corregir o borrar una temporada mientras no tenga partidas. Al finalizarla queda protegida como histórico." />
+          {seasons.length === 0 ? <div className="admin-empty">No hay temporadas.</div> : (
             <div className="admin-list">
               {seasons.map((season) => (
-                <div
-                  className="admin-list-item"
-                  key={season.id}
-                >
+                <div className="admin-list-item admin-season-item" key={season.id}>
                   <div>
                     <strong>{season.name}</strong>
-                    <span>
-                      {formatDate(season.start_date)}
-                      {season.end_date
-                        ? ` → ${formatDate(season.end_date)}`
-                        : ''}
-                    </span>
+                    <span>{formatDate(season.start_date)}{season.end_date ? ` → ${formatDate(season.end_date)}` : ''}</span>
+                    {season.finalized_at && <small>Finalizada {formatDateTime(season.finalized_at)}</small>}
                   </div>
-
-                  {season.active ? (
-                    <StatusBadge tone="success">
-                      Activa
-                    </StatusBadge>
-                  ) : (
-                    <StatusBadge>Inactiva</StatusBadge>
-                  )}
+                  <div className="admin-actions">
+                    {season.finalized_at ? <StatusBadge>Histórico</StatusBadge> : season.active ? <StatusBadge tone="success">Activa</StatusBadge> : <StatusBadge>Inactiva</StatusBadge>}
+                    {!season.finalized_at && <button className="admin-button small secondary" type="button" onClick={() => onEdit(season)} disabled={saving}>Editar</button>}
+                    {!season.finalized_at && <button className="admin-button small secondary" type="button" onClick={() => onDelete(season)} disabled={saving}>Eliminar</button>}
+                    {!season.finalized_at && <button className="admin-button small danger" type="button" onClick={() => onFinalize(season)} disabled={saving}>Finalizar</button>}
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </section>
       </div>
+      <div className="admin-info-strip">Al finalizar una temporada, sus puntuaciones, penalizaciones, bonificaciones y No te flipes permanecen en el histórico. La siguiente temporada activa comienza con clasificación y efectos a cero.</div>
     </div>
   )
 }
+
 
 function WeeksSection({
   weeks,
@@ -2151,30 +2360,40 @@ function WeeksSection({
   onSaveEvent,
   onCloseWeek,
 }) {
+  const activeEvents = events.filter((event) => event.active)
+  function recommendedEventId(seasonId) {
+    if (!seasonId || activeEvents.length === 0) return ''
+    const counts = new Map(activeEvents.map((event) => [Number(event.id), 0]))
+    weeks.filter((week) => Number(week.season) === Number(seasonId)).forEach((week) => {
+      const id = Number(week.weekly_event)
+      if (counts.has(id)) counts.set(id, counts.get(id) + 1)
+    })
+    const minimum = Math.min(...counts.values())
+    return String(activeEvents.find((event) => counts.get(Number(event.id)) === minimum)?.id || '')
+  }
+
   return (
     <div className="admin-content">
       <section className="admin-card">
         <SectionHeader
           eyebrow="Nueva jornada"
           title="Crear jornada"
-          description="Asigna la jornada a una temporada y, opcionalmente, un evento semanal."
+          description="El número se asigna automáticamente. Al elegir temporada se propone el evento menos utilizado para mantener un reparto equilibrado."
         />
 
         <form
           className="admin-form"
           onSubmit={onSubmit}
         >
-          <div className="admin-form-grid admin-form-grid-4">
+          <div className="admin-form-grid">
             <label>
               Temporada
               <select
                 value={form.season}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    season: event.target.value,
-                  })
-                }
+                onChange={(event) => {
+                  const season = event.target.value
+                  setForm({ ...form, season, weekly_event: recommendedEventId(season) })
+                }}
                 required
               >
                 <option value="">
@@ -2189,23 +2408,6 @@ function WeeksSection({
                   </option>
                 ))}
               </select>
-            </label>
-
-            <label>
-              Número
-              <input
-                type="number"
-                min="1"
-                value={form.number}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    number: event.target.value,
-                  })
-                }
-                placeholder="1"
-                required
-              />
             </label>
 
             <label>
@@ -2235,9 +2437,7 @@ function WeeksSection({
                 }
               >
                 <option value="">Sin evento</option>
-                {events
-                  .filter((event) => event.active)
-                  .map((event) => (
+                {activeEvents.map((event) => (
                     <option
                       key={event.id}
                       value={event.id}
@@ -2246,6 +2446,7 @@ function WeeksSection({
                     </option>
                   ))}
               </select>
+              <small>Propuesta automática: eventos con menos apariciones en esta temporada.</small>
             </label>
           </div>
 
@@ -2375,15 +2576,19 @@ function EventsSection({
   setForm,
   onSubmit,
   saving,
+  editingEventId,
+  onEdit,
+  onDelete,
+  onCancel,
 }) {
   return (
     <div className="admin-content">
       <div className="admin-two-column">
         <section className="admin-card">
           <SectionHeader
-            eyebrow="Nuevo evento"
-            title="Crear evento semanal"
-            description="Define las reglas y los puntos extra del evento."
+            eyebrow={editingEventId ? 'Corrección' : 'Nuevo evento'}
+            title={editingEventId ? 'Editar evento semanal' : 'Crear evento semanal'}
+            description="Los eventos futuros pueden corregirse o eliminarse. Los que ya estén en una jornada cerrada quedan protegidos como histórico."
           />
 
           <form
@@ -2470,8 +2675,9 @@ function EventsSection({
               type="submit"
               disabled={saving}
             >
-              {saving ? 'Creando…' : 'Crear evento'}
+              {saving ? 'Guardando…' : editingEventId ? 'Guardar cambios' : 'Crear evento'}
             </button>
+            {editingEventId && <button className="admin-button secondary" type="button" onClick={onCancel} disabled={saving}>Cancelar</button>}
           </form>
         </section>
 
@@ -2524,6 +2730,10 @@ function EventsSection({
                       </div>
                     </details>
                   )}
+                  <div className="admin-actions">
+                    <button className="admin-button small secondary" type="button" onClick={() => onEdit(event)} disabled={saving}>Editar</button>
+                    <button className="admin-button small danger" type="button" onClick={() => onDelete(event)} disabled={saving}>Eliminar</button>
+                  </div>
                 </article>
               ))}
             </div>
@@ -2603,6 +2813,7 @@ function ScoringSection({
   onSubmit,
   onEdit,
   onToggle,
+  onDelete,
   onCancel,
 }) {
   const selectedSeason = seasons.find(
@@ -2628,7 +2839,7 @@ function ScoringSection({
                 ? 'Modificar puntuación'
                 : 'Crear regla de puntuación'
             }
-            description="Las reglas determinan los puntos que calcula el backend al cerrar una partida."
+            description="Configura los puntos que se aplican al cerrar una partida."
           />
 
           <form className="admin-form" onSubmit={onSubmit}>
@@ -2819,6 +3030,14 @@ function ScoringSection({
                     >
                       {rule.active ? 'Desactivar' : 'Activar'}
                     </button>
+
+                    <button
+                      className="admin-button small danger"
+                      onClick={() => onDelete(rule)}
+                      disabled={saving || weeks.some((week) => Number(week.season) === Number(rule.season) && week.closed)}
+                    >
+                      Eliminar
+                    </button>
                   </div>
                 </article>
               ))}
@@ -2831,7 +3050,7 @@ function ScoringSection({
         <SectionHeader
           eyebrow="Referencia"
           title="Cómo se calculan los puntos"
-          description="El cálculo se realiza en el backend al cerrar la partida; el frontend solo configura las reglas."
+          description="Los puntos se aplican automáticamente al cerrar cada partida."
         />
 
         <div className="admin-info-strip">
@@ -2861,8 +3080,13 @@ function HandicapsSection({
   onAssign,
   onSaveDefinition,
   onEditDefinition,
+  onDeleteDefinition,
   onCancelDefinition,
   onSaveCategory,
+  onEditGrant,
+  onDeleteGrant,
+  onEditAssigned,
+  onDeleteAssigned,
 }) {
   const activeSeasons = seasons.filter((season) => season.active)
   const [categoryDrafts, setCategoryDrafts] = useState({})
@@ -2909,7 +3133,7 @@ function HandicapsSection({
             </label>
 
             <div className="admin-info-strip">
-              <strong>🎲 Penalización aleatoria</strong>
+              <strong>✦ Penalización aleatoria</strong>
               <span>
                 El poder no contiene una penalización concreta. Cuando el jugador lo lance,
                 la ruleta sorteará una de las penalizaciones activas usando los pesos configurados.
@@ -2979,15 +3203,11 @@ function HandicapsSection({
         <SectionHeader
           eyebrow={editingDefinitionId ? 'Editar' : 'Catálogo'}
           title={editingDefinitionId ? 'Modificar handicap' : 'Crear handicap'}
-          description="Los valores de cada asignación quedan congelados como snapshot histórico."
+          description="El código se genera automáticamente. Los valores quedan guardados en el histórico de cada asignación."
         />
 
         <form className="admin-form" onSubmit={onSaveDefinition}>
           <div className="admin-form-grid admin-form-grid-4">
-            <label>
-              Código
-              <input name="code" value={definitionForm.code} onChange={onDefinitionFieldChange} disabled={Boolean(editingDefinitionId) || saving} required />
-            </label>
             <label>
               Nombre
               <input name="name" value={definitionForm.name} onChange={onDefinitionFieldChange} disabled={saving} required />
@@ -3062,7 +3282,7 @@ function HandicapsSection({
         <SectionHeader
           eyebrow="Catálogo"
           title="Definiciones y probabilidades"
-          description="La probabilidad mostrada la calcula el backend a partir de los pesos actuales."
+          description="La probabilidad mostrada se obtiene a partir de los pesos configurados."
         />
         {definitions.length === 0 ? (
           <div className="admin-empty">No hay handicaps definidos.</div>
@@ -3086,9 +3306,10 @@ function HandicapsSection({
                   <div><span>Penalización</span><strong>-{definition.penalty_points}</strong></div>
                   <div><span>Peso</span><strong>{definition.selection_weight}</strong></div>
                 </div>
-                <button className="admin-button secondary small" onClick={() => onEditDefinition(definition)} disabled={saving}>
-                  Editar
-                </button>
+                <div className="admin-actions">
+                  <button className="admin-button secondary small" type="button" onClick={() => onEditDefinition(definition)} disabled={saving}>Editar</button>
+                  <button className="admin-button danger small" type="button" onClick={() => onDeleteDefinition(definition)} disabled={saving}>Eliminar</button>
+                </div>
               </article>
             ))}
           </div>
@@ -3107,7 +3328,7 @@ function HandicapsSection({
           <div className="admin-table-wrap">
             <table className="admin-table admin-handicap-table">
               <thead>
-                <tr><th>Jugador premiado</th><th>Contenido</th><th>Concedido por</th><th>Motivo del premio</th><th>Estado</th><th>Objetivo</th><th>Fecha de uso</th></tr>
+                <tr><th>Jugador premiado</th><th>Contenido</th><th>Concedido por</th><th>Motivo del premio</th><th>Estado</th><th>Objetivo</th><th>Fecha de uso</th><th>Acciones</th></tr>
               </thead>
               <tbody>
                 {handicapGrants.map((grant) => (
@@ -3119,6 +3340,7 @@ function HandicapsSection({
                     <td>{grant.used ? <StatusBadge tone="info">Lanzado</StatusBadge> : <StatusBadge tone="success">Disponible</StatusBadge>}</td>
                     <td>{grant.target_player_name || '—'}</td>
                     <td>{grant.used_at ? formatDateTime(grant.used_at) : '—'}</td>
+                    <td><div className="admin-table-actions"><button className="admin-button small secondary" type="button" onClick={() => onEditGrant(grant)} disabled={saving}>Editar</button><button className="admin-button small danger" type="button" onClick={() => onDeleteGrant(grant)} disabled={saving}>Eliminar</button></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -3151,6 +3373,7 @@ function HandicapsSection({
                   <th>Canjeada</th>
                   <th>Partida canje</th>
                   <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -3186,6 +3409,7 @@ function HandicapsSection({
                         <StatusBadge tone="success">En gracia</StatusBadge>
                       )}
                     </td>
+                    <td><div className="admin-table-actions"><button className="admin-button small secondary" type="button" onClick={() => onEditAssigned(handicap)} disabled={saving}>Editar</button><button className="admin-button small danger" type="button" onClick={() => onDeleteAssigned(handicap)} disabled={saving || handicap.used}>Eliminar</button></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -3812,7 +4036,7 @@ function MatchesSection({
                     <strong>Partida cerrada.</strong>
                     <span>
                       Los resultados quedan bloqueados por el
-                      backend.
+                      sistema.
                     </span>
                   </div>
 
@@ -3878,7 +4102,7 @@ function MatchesSection({
         ) : (
           <section className="admin-card admin-empty-card">
             <div className="admin-empty-large">
-              <span className="admin-empty-icon">♠</span>
+              <span className="admin-empty-icon"><AdminNavIcon type="matches" /></span>
               <h2>Selecciona una partida</h2>
               <p>
                 Crea una partida arriba o selecciona una de la

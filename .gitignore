@@ -27,3 +27,8 @@ backend/sqlite_app_data.json
 # OS
 .DS_Store
 Thumbs.db
+# Exportaciones/copias locales de base de datos
+backend/db*.sqlite3
+backend/*.sql
+backend/sqlite_*.json
+backend/*_data*.json

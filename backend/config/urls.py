@@ -31,6 +31,7 @@ urlpatterns = [
     path("api/watches/", include("watches.urls")),
     path("api/penalties/", include("penalties.urls")),
     path("api/handicaps/", include("handicaps.urls")),
+    path("api/binders/", include("binders.urls")),
 ]
 
 if settings.DEBUG:

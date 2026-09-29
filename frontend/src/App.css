@@ -1271,3 +1271,242 @@ body {
   .contact-reply-box { grid-template-columns:1fr; }
   .contact-bubble { max-width:96%; }
 }
+
+/* Ronda 4: identidad visual, bote y consentimiento */
+.league-heading-centered {
+  position: relative;
+  min-height: 88px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 190px;
+  text-align: center;
+}
+.league-heading-logo {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 168px;
+  max-height: 64px;
+  transform: translateY(-50%);
+  object-fit: contain;
+  object-position: left center;
+}
+.league-heading-title { text-align: center; }
+.league-heading-centered .league-season-date {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 175px;
+  text-align: right;
+}
+
+.league-search {
+  min-height: 38px;
+  height: 38px;
+  align-self: end;
+  border-radius: 11px;
+  padding: 0 13px;
+  font-size: 12px;
+}
+
+.league-layout--premium {
+  grid-template-columns: minmax(190px, 235px) minmax(0, 1fr) minmax(250px, 300px);
+}
+.league-layout--free {
+  grid-template-columns: minmax(190px, 235px) minmax(0, 1fr) minmax(250px, 300px);
+}
+.league-prize-sidebar,
+.league-sidebar { display: grid; gap: 14px; min-width: 0; }
+.prize-pool-card,
+.free-league-card,
+.membership-card { padding: 18px; }
+.prize-pool-card .section-title h2,
+.free-league-card .section-title h2,
+.membership-card .section-title h2 { margin-bottom: 10px; }
+.prize-pool-total {
+  display: grid;
+  gap: 2px;
+  margin: 10px 0 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(145deg,#18112b,#4c1d95);
+  color: #fff;
+}
+.prize-pool-total strong { font-size: 28px; letter-spacing: -.04em; }
+.prize-pool-total span { color: #ddd6fe; font-size: 10px; font-weight: 700; }
+.prize-podium { display: grid; gap: 7px; }
+.prize-podium > div {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid #ece8f8;
+  border-radius: 10px;
+  background: #faf8ff;
+}
+.prize-podium b { color: #6d28d9; }
+.prize-podium strong { font-size: 13px; }
+.prize-podium span { color: #8b8f9c; font-size: 9px; }
+.prize-pool-card p,
+.free-league-card p,
+.membership-card p { color:#5f6472; font-size:11px; line-height:1.55; }
+.prize-pool-card > small { display:block; margin-top:12px; color:#6d28d9; font-size:10px; line-height:1.45; font-weight:700; }
+.free-league-card { border-color:#d9f0df; background:linear-gradient(145deg,#fff,#f5fff7); }
+.free-league-card .section-title > span { color:#15803d; }
+.membership-card { margin: 18px 0; }
+.membership-warning { padding:12px; border-radius:11px; background:#fff7ed; color:#9a3412 !important; }
+
+.cookie-banner {
+  position: fixed;
+  z-index: 2000;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 16px 18px;
+  border: 1px solid #d9d5e8;
+  border-radius: 16px;
+  background: rgba(255,255,255,.98);
+  box-shadow: 0 18px 55px rgba(17,24,39,.22);
+}
+.cookie-banner strong { color:#211b35; }
+.cookie-banner p { margin:4px 0 0; color:#5f6472; font-size:11px; line-height:1.5; }
+.cookie-banner small { display:block; margin-top:5px; color:#b45309; font-size:10px; }
+.cookie-actions { display:flex; gap:8px; flex:none; }
+
+@media (max-width: 1120px) {
+  .league-layout--premium,
+  .league-layout--free { grid-template-columns: minmax(180px, 220px) minmax(0,1fr); }
+  .league-sidebar { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  .league-heading-centered { padding: 72px 0 0; min-height: auto; }
+  .league-heading-logo { left:50%; top:0; width:150px; transform:translateX(-50%); }
+  .league-heading-centered .league-season-date { position:static; transform:none; max-width:none; text-align:center; }
+  .league-layout--premium,
+  .league-layout--free { grid-template-columns:1fr; }
+  .league-prize-sidebar,.league-sidebar { grid-column:auto; }
+  .league-standings-card { order:1; }
+  .league-prize-sidebar { order:2; }
+  .league-sidebar { order:3; }
+  .cookie-banner { flex-direction:column; align-items:stretch; }
+  .cookie-actions { justify-content:flex-end; flex-wrap:wrap; }
+}
+.league-heading-title > span {
+  color:#7c3aed;
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  font-size:10px;
+  font-weight:800;
+}
+
+/* Ronda 5: tablas sin scroll horizontal, cabecera y carpetas */
+.league-table-wrap { overflow-x: visible; width: 100%; }
+.league-table { min-width: 0; table-layout: fixed; }
+.league-table th,
+.league-table td { padding: 13px 8px; overflow: hidden; }
+.league-table th:nth-child(1), .league-table td:nth-child(1) { width: 7%; text-align:center; }
+.league-table th:nth-child(2), .league-table td:nth-child(2) { width: 34%; }
+.league-table th:nth-child(n+3), .league-table td:nth-child(n+3) { width: 11.8%; text-align:center; }
+.league-table th { white-space: normal; overflow-wrap: anywhere; line-height: 1.2; }
+.league-player-main { min-width: 0; }
+.league-player-main > div { min-width: 0; }
+
+.league-heading-centered .league-season-date {
+  max-width: 245px;
+  line-height: 1.45;
+}
+.league-heading-centered .league-season-date strong { color:#4b5060; }
+
+.prize-pool-card .section-title,
+.free-league-card .section-title,
+.membership-card .section-title { padding: 0; }
+.prize-pool-card .section-title h2,
+.free-league-card .section-title h2,
+.membership-card .section-title h2 { margin: 4px 0 0; }
+.prize-pool-total { margin-top: 12px; }
+
+.footer-rules-link {
+  margin-left: 8px; padding: 0; border: 0; background: transparent;
+  color:#6d28d9; font:inherit; font-weight:900; text-decoration:underline; cursor:pointer;
+}
+.rules-modal { width:min(820px,100%); }
+.league-rules-full { color:#4f5563; font-size:12px; line-height:1.6; }
+.league-rules-full h3 { margin:18px 0 7px; color:#181b25; font-size:14px; }
+.league-rules-full ul { display:grid; gap:7px; padding-left:20px; }
+.rules-source-note { padding:11px 13px; border-radius:11px; background:#f5f3ff; color:#5b21b6; }
+
+.contact-thread-badges { display:flex; align-items:center; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
+.contact-collapse { border:0; background:#f3f0ff; color:#6d28d9; border-radius:999px; padding:5px 9px; font-size:9px; font-weight:900; cursor:pointer; }
+.app-button.danger { border-color:#fecaca; background:#fff5f5; color:#b91c1c; }
+
+.binder-page > .league-heading p { margin:6px 0 0; color:#707583; font-size:11px; }
+.binder-layout { display:grid; grid-template-columns:220px minmax(0,1fr) 285px; gap:16px; align-items:start; }
+.binder-owners,.binder-editor,.binder-book-card { min-width:0; }
+.binder-owners .section-title,.binder-editor .section-title { padding-bottom:10px; }
+.binder-owner-list { display:grid; gap:6px; padding:0 12px 14px; max-height:650px; overflow-y:auto; }
+.binder-owner-list button { display:grid; gap:3px; width:100%; padding:10px 11px; border:1px solid #e6e7ee; border-radius:10px; background:#fff; text-align:left; cursor:pointer; }
+.binder-owner-list button.active { border-color:#c4b5fd; background:#f7f4ff; box-shadow:inset 3px 0 #7c3aed; }
+.binder-owner-list b { color:#222631; font-size:11px; }
+.binder-owner-list small { color:#838895; font-size:9px; }
+.binder-book-card { padding:18px; perspective:1400px; overflow:hidden; }
+.binder-book-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:14px; }
+.binder-book-head span { color:#7c3aed; text-transform:uppercase; letter-spacing:.08em; font-size:9px; font-weight:900; }
+.binder-book-head h2 { margin:3px 0; font-size:20px; }
+.binder-book-head p { margin:4px 0 0; color:#6f7481; font-size:10px; }
+.binder-book-head > b { flex:none; padding:6px 9px; border-radius:999px; background:#f3f0ff; color:#6d28d9; font-size:9px; }
+.binder-sheet { min-height:470px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:16px; border:1px solid #ddd8ca; border-radius:6px 16px 16px 6px; background:linear-gradient(90deg,#ede8dc 0,#fffdf8 4%,#fff 96%,#f2ede2 100%); box-shadow:inset 10px 0 18px rgba(70,55,30,.07), 0 10px 25px rgba(40,35,25,.06); transform-origin:left center; }
+.binder-sheet.flip-next { animation:binderPageNext .36s ease; }
+.binder-sheet.flip-back { animation:binderPageBack .36s ease; transform-origin:right center; }
+@keyframes binderPageNext { 0%{transform:rotateY(0)} 50%{transform:rotateY(-16deg);opacity:.72} 100%{transform:rotateY(0)} }
+@keyframes binderPageBack { 0%{transform:rotateY(0)} 50%{transform:rotateY(16deg);opacity:.72} 100%{transform:rotateY(0)} }
+.binder-card { display:flex; flex-direction:column; min-width:0; overflow:hidden; border:1px solid #e1e2e7; border-radius:12px; background:#fff; box-shadow:0 6px 14px rgba(26,28,38,.06); }
+.binder-card-image { position:relative; aspect-ratio: 488 / 680; background:#191b22; overflow:hidden; }
+.binder-card-image img { width:100%; height:100%; object-fit:cover; display:block; }
+.binder-card-image > span { height:100%; display:grid; place-items:center; color:#b7bac4; font-size:10px; }
+.foil-badge { position:absolute; right:7px; top:7px; padding:4px 7px; border-radius:999px; background:linear-gradient(135deg,#f0abfc,#67e8f9,#fde68a); color:#312e81; font-size:8px; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+.binder-card-info { display:grid; gap:4px; padding:9px; }
+.binder-card-info > strong { font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.binder-card-info > span { color:#777c89; font-size:9px; }
+.binder-price { display:flex; justify-content:space-between; gap:8px; align-items:end; margin-top:3px; padding-top:6px; border-top:1px solid #eeeef2; }
+.binder-price small { color:#777c89; font-size:8px; }
+.binder-price b { color:#5b21b6; font-size:12px; }
+.binder-card-info a { color:#6d28d9; font-size:8px; font-weight:800; text-decoration:none; }
+.binder-card-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.binder-card-actions button:not(.app-button) { border:0; border-radius:7px; padding:5px 7px; background:#f4f2fa; color:#5b21b6; font-size:8px; font-weight:800; cursor:pointer; }
+.binder-empty-page { grid-column:1/-1; min-height:360px; display:grid; place-items:center; color:#8a8f9b; font-size:11px; text-align:center; }
+.binder-page-controls { display:flex; justify-content:space-between; gap:10px; margin-top:12px; }
+.binder-page-controls button { border:1px solid #dddfea; border-radius:9px; background:#fff; padding:8px 11px; color:#4f5563; font-size:9px; font-weight:800; cursor:pointer; }
+.binder-page-controls button:disabled { opacity:.4; cursor:not-allowed; }
+.binder-price-note { margin:10px 0 0; color:#8a8f9b; font-size:8px; line-height:1.45; }
+.binder-form { display:grid; gap:10px; padding:0 18px 18px; }
+.binder-form label { display:grid; gap:5px; color:#555a68; font-size:9px; font-weight:800; }
+.binder-form input,.binder-form textarea,.binder-form select { width:100%; box-sizing:border-box; border:1px solid #dedfe6; border-radius:9px; padding:9px 10px; background:#fff; font:inherit; font-size:10px; outline:none; }
+.binder-card-form { border-top:1px solid #ececf1; padding-top:16px; }
+.binder-card-form h3 { margin:0; font-size:13px; }
+.binder-form-row { display:grid; grid-template-columns:1fr 80px; gap:8px; }
+.binder-autocomplete { position:relative; }
+.binder-suggestions { position:absolute; z-index:20; left:0; right:0; top:100%; max-height:220px; overflow-y:auto; border:1px solid #dddfea; border-radius:9px; background:#fff; box-shadow:0 12px 30px rgba(20,22,35,.14); }
+.binder-suggestions button { display:block; width:100%; border:0; border-bottom:1px solid #eeeef2; background:#fff; padding:8px 9px; text-align:left; font-size:9px; cursor:pointer; }
+.binder-suggestions button:hover { background:#f7f4ff; color:#6d28d9; }
+
+@media (max-width: 1100px) {
+  .binder-layout { grid-template-columns:190px minmax(0,1fr); }
+  .binder-editor { grid-column:1/-1; }
+  .binder-sheet { min-height:420px; }
+}
+@media (max-width: 760px) {
+  .league-table th,.league-table td { padding:10px 4px; font-size:10px; }
+  .league-table th:nth-child(2), .league-table td:nth-child(2) { width:37%; }
+  .league-status-icons { display:none; }
+  .binder-layout { grid-template-columns:1fr; }
+  .binder-sheet { grid-template-columns:repeat(2,minmax(0,1fr)); min-height:0; }
+  .binder-editor { grid-column:auto; }
+}

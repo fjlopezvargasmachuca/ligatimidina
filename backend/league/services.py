@@ -1,14 +1,14 @@
 from django.db.models import Count, Q, Sum
+from decimal import Decimal, ROUND_HALF_UP
 from django.utils import timezone
 from datetime import timedelta
-import random
 
 from accounts.models import Player
 from matches.models import MatchPlayer
 from penalties.models import Penalty
 from handicaps.services import HandicapService
 
-from .models import ScoringRule
+from .models import LeagueSettings, PrizePoolMonth, ScoringRule
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
@@ -59,9 +59,15 @@ class ScoringService:
         if self.match_player.deck.is_original:
             points += self.get_rule_points("ORIGINAL_DECK")
 
-        # Evento semanal
+        # Evento semanal: cada evento define su propia bonificación. Se mantiene
+        # la regla WEEKLY_EVENT como compatibilidad para jornadas antiguas sin
+        # evento enlazado.
         if self.match_player.participates_in_weekly_event:
-            points += self.get_rule_points("WEEKLY_EVENT")
+            weekly_event = self.match.league_week.weekly_event
+            if weekly_event is not None:
+                points += weekly_event.extra_points
+            else:
+                points += self.get_rule_points("WEEKLY_EVENT")
 
         # Primera eliminación
         first_elimination = self.match.eliminations.filter(
@@ -489,6 +495,104 @@ class RankingService:
         }
 
 
+class PrizePoolService:
+    TOP_SPLIT = (Decimal("50"), Decimal("30"), Decimal("20"))
+
+    @staticmethod
+    def _month_start(value):
+        return value.replace(day=1)
+
+    @classmethod
+    @transaction.atomic
+    def get_month(cls, on_date=None):
+        on_date = on_date or timezone.localdate()
+        month = cls._month_start(on_date)
+        settings = LeagueSettings.load()
+
+        previous = PrizePoolMonth.objects.filter(month__lt=month).order_by("-month").first()
+        if previous is not None and not previous.finalized:
+            previous.finalized = True
+            previous.save(update_fields=["finalized", "updated_at"])
+
+        carry_in = previous.available_amount if previous is not None else Decimal("0.00")
+        row, _ = PrizePoolMonth.objects.get_or_create(
+            month=month,
+            defaults={
+                "carry_in": carry_in,
+                "subscription_fee_snapshot": settings.subscription_fee,
+                "prize_percent_snapshot": settings.prize_pool_percent,
+            },
+        )
+
+        if not row.finalized:
+            # Solo el mes actual es dinámico. Al cambiar de mes el snapshot queda
+            # congelado para que el histórico del bote no cambie retroactivamente.
+            participants = Player.objects.filter(
+                is_active=True,
+                membership_plan=Player.MembershipPlan.SUPPORTER,
+            ).filter(
+                Q(subscription_paid_until__isnull=True)
+                | Q(subscription_paid_until__gte=month)
+            ).count()
+            contribution = (
+                Decimal(participants)
+                * settings.subscription_fee
+                * settings.prize_pool_percent
+                / Decimal("100")
+            ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            row.premium_participants = participants
+            row.subscription_fee_snapshot = settings.subscription_fee
+            row.prize_percent_snapshot = settings.prize_pool_percent
+            row.carry_in = carry_in
+            row.monthly_contribution = contribution
+            row.save(update_fields=[
+                "premium_participants",
+                "subscription_fee_snapshot",
+                "prize_percent_snapshot",
+                "carry_in",
+                "monthly_contribution",
+                "updated_at",
+            ])
+        return row
+
+    @classmethod
+    def summary(cls, on_date=None):
+        row = cls.get_month(on_date=on_date)
+        total = row.available_amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        prizes = [
+            (total * percent / Decimal("100")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            for percent in cls.TOP_SPLIT
+        ]
+        return {
+            "month": row.month,
+            "premium_participants": row.premium_participants,
+            "subscription_fee": row.subscription_fee_snapshot,
+            "prize_pool_percent": row.prize_percent_snapshot,
+            "carry_in": row.carry_in,
+            "monthly_contribution": row.monthly_contribution,
+            "manual_adjustment": row.manual_adjustment,
+            "distributed_amount": row.distributed_amount,
+            "total": total,
+            "top_1": prizes[0],
+            "top_2": prizes[1],
+            "top_3": prizes[2],
+        }
+
+
+class SeasonService:
+    @staticmethod
+    @transaction.atomic
+    def finalize(season):
+        if season.finalized_at is not None:
+            raise ValidationError("La temporada ya está finalizada.")
+        if season.weeks.filter(matches__closed=False).exists():
+            raise ValidationError("No se puede finalizar la temporada mientras haya partidas abiertas.")
+        season.active = False
+        season.finalized_at = timezone.now()
+        season.save(update_fields=["active", "finalized_at"])
+        return season
+
+
 class LeagueWeekService:
 
     @staticmethod
@@ -497,10 +601,13 @@ class LeagueWeekService:
         events = list(WeeklyEvent.objects.filter(active=True))
         if not events:
             return None
+        # Reparto determinista y equitativo: no se repite un evento mientras
+        # exista otro activo con menos apariciones en la temporada.
+        events.sort(key=lambda event: event.id)
         counts = {event.id: season.weeks.filter(weekly_event=event).count() for event in events}
         minimum = min(counts.values())
         candidates = [event for event in events if counts[event.id] == minimum]
-        return random.SystemRandom().choice(candidates)
+        return candidates[0]
 
     @classmethod
     @transaction.atomic

@@ -1510,3 +1510,117 @@ class AutomaticLeagueCalendarTest(TestCase):
         self.assertIn(active.id, ids)
         self.assertNotIn(inactive.id, ids)
 
+
+
+class LeagueModeAndPrizePoolTest(APITestCase):
+    def setUp(self):
+        self.admin = Player.objects.create_user(
+            username="mode-admin", password="test1234", display_name="Admin", is_staff=True,
+        )
+        self.standard = Player.objects.create_user(
+            username="mode-standard", password="test1234", display_name="Standard",
+        )
+        self.premium = Player.objects.create_user(
+            username="mode-premium", password="test1234", display_name="Premium",
+            membership_plan=Player.MembershipPlan.SUPPORTER,
+            subscription_paid_until=date(2026, 9, 30),
+        )
+
+    def test_free_mode_allows_three_weekly_games_for_everyone(self):
+        from .models import LeagueSettings
+        settings = LeagueSettings.load()
+        settings.mode = LeagueSettings.LeagueMode.FREE
+        settings.save()
+        self.assertEqual(self.standard.weekly_match_limit(on_date=date(2026, 9, 15)), 3)
+
+    def test_premium_mode_distinguishes_standard_and_premium(self):
+        from .models import LeagueSettings
+        settings = LeagueSettings.load()
+        settings.mode = LeagueSettings.LeagueMode.PREMIUM
+        settings.save()
+        self.assertEqual(self.standard.weekly_match_limit(on_date=date(2026, 9, 15)), 1)
+        self.assertEqual(self.premium.weekly_match_limit(on_date=date(2026, 9, 15)), 3)
+
+    def test_premium_without_end_date_counts_as_active_and_in_prize_pool(self):
+        from .models import LeagueSettings
+        from .services import PrizePoolService
+        self.premium.subscription_paid_until = None
+        self.premium.save(update_fields=["subscription_paid_until"])
+        settings = LeagueSettings.load()
+        settings.mode = LeagueSettings.LeagueMode.PREMIUM
+        settings.subscription_fee = 10
+        settings.prize_pool_percent = 20
+        settings.save()
+        self.assertTrue(self.premium.has_active_subscription(on_date=date(2026, 9, 15)))
+        self.assertEqual(self.premium.weekly_match_limit(on_date=date(2026, 9, 15)), 3)
+        summary = PrizePoolService.summary(on_date=date(2026, 9, 15))
+        self.assertEqual(summary["premium_participants"], 1)
+        self.assertEqual(summary["monthly_contribution"], 2)
+
+    def test_prize_pool_uses_configured_twenty_percent(self):
+        from .models import LeagueSettings
+        from .services import PrizePoolService
+        settings = LeagueSettings.load()
+        settings.mode = LeagueSettings.LeagueMode.PREMIUM
+        settings.subscription_fee = 10
+        settings.prize_pool_percent = 20
+        settings.save()
+        summary = PrizePoolService.summary(on_date=date(2026, 9, 15))
+        self.assertEqual(summary["premium_participants"], 1)
+        self.assertEqual(summary["monthly_contribution"], 2)
+        self.assertEqual(summary["top_1"], 1)
+        self.assertEqual(str(summary["top_2"]), "0.60")
+        self.assertEqual(str(summary["top_3"]), "0.40")
+
+    def test_only_admin_can_change_league_mode(self):
+        self.client.force_authenticate(user=self.standard)
+        denied = self.client.patch("/api/league/settings/", {"mode": "FREE"}, format="json")
+        self.assertEqual(denied.status_code, 403)
+        self.client.force_authenticate(user=self.admin)
+        allowed = self.client.patch("/api/league/settings/", {"mode": "FREE"}, format="json")
+        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(allowed.data["mode"], "FREE")
+
+
+class SeasonFinalizationTest(APITestCase):
+    def test_finalizing_season_removes_it_from_active_competition(self):
+        admin = Player.objects.create_user(username="final-admin", password="test1234", is_staff=True)
+        season = Season.objects.create(name="Final", start_date=date(2026, 9, 1), active=True)
+        self.client.force_authenticate(user=admin)
+        response = self.client.post(f"/api/league/seasons/{season.id}/finalize/")
+        self.assertEqual(response.status_code, 200)
+        season.refresh_from_db()
+        self.assertFalse(season.active)
+        self.assertIsNotNone(season.finalized_at)
+
+
+class WeeklyEventSpecificPointsTest(TestCase):
+    def test_weekly_event_uses_event_extra_points_when_event_is_assigned(self):
+        player = Player.objects.create_user(username="event-points", password="test1234")
+        deck = Deck.objects.create(owner=player, name="Deck", commander="Commander")
+        season = Season.objects.create(name="Event points", start_date=date(2026, 9, 1))
+        event = WeeklyEvent.objects.create(name="Especial", description="x", rules="x", extra_points=7)
+        week = LeagueWeek.objects.create(season=season, number=1, date=date(2026, 9, 7), weekly_event=event)
+        match = Match.objects.create(league_week=week, administrator=player, played_at=aware_datetime(2026, 9, 7, 20))
+        result = MatchPlayer.objects.create(match=match, player=player, deck=deck, final_position=1, participates_in_weekly_event=True)
+        ScoringRule.objects.create(season=season, code="WIN", name="Win", points=5)
+        ScoringRule.objects.create(season=season, code="WEEKLY_EVENT", name="Legacy", points=3)
+        self.assertEqual(ScoringService(result).calculate(), 12)
+
+class ScoringRuleDeleteAPITest(APITestCase):
+    def setUp(self):
+        self.admin = Player.objects.create_user(username="rule-admin", password="test1234", is_staff=True)
+        self.season = Season.objects.create(name="Reglas", start_date=date(2026, 9, 1), active=True)
+        self.rule = ScoringRule.objects.create(season=self.season, code="WIN", name="Victoria", points=3)
+        self.client.force_authenticate(user=self.admin)
+
+    def test_admin_can_delete_rule_before_closed_weeks(self):
+        response = self.client.delete(f"/api/league/scoring-rules/{self.rule.id}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(ScoringRule.objects.filter(pk=self.rule.id).exists())
+
+    def test_admin_cannot_delete_rule_after_closed_week(self):
+        LeagueWeek.objects.create(season=self.season, number=1, date=date(2026, 9, 7), closed=True)
+        response = self.client.delete(f"/api/league/scoring-rules/{self.rule.id}/")
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(ScoringRule.objects.filter(pk=self.rule.id).exists())

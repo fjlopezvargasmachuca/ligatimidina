@@ -1,6 +1,7 @@
 from rest_framework import serializers
+from django.db.models import Max
 
-from .models import LeagueWeek, ScoringRule, Season
+from .models import LeagueSettings, LeagueWeek, PrizePoolMonth, ScoringRule, Season
 
 
 class StandingSerializer(serializers.Serializer):
@@ -46,6 +47,7 @@ class LeagueWeekSerializer(serializers.Serializer):
 
 
 class LeagueWeekAdminSerializer(serializers.ModelSerializer):
+    season_name = serializers.CharField(source="season.name", read_only=True)
     weekly_event_name = serializers.CharField(
         source="weekly_event.name",
         read_only=True,
@@ -57,6 +59,7 @@ class LeagueWeekAdminSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "season",
+            "season_name",
             "number",
             "date",
             "weekly_event",
@@ -67,6 +70,7 @@ class LeagueWeekAdminSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "season",
+            "season_name",
             "number",
             "date",
             "weekly_event_name",
@@ -78,118 +82,36 @@ class LeagueWeekAdminSerializer(serializers.ModelSerializer):
 class LeagueWeekCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeagueWeek
-        fields = [
-            "season",
-            "number",
-            "date",
-            "weekly_event",
-        ]
-
-    def validate_number(self, value):
-        if value < 1:
-            raise serializers.ValidationError(
-                "El número de jornada debe ser mayor que 0."
-            )
-
-        return value
+        fields = ["season", "date", "weekly_event"]
+        extra_kwargs = {"weekly_event": {"required": False, "allow_null": True}}
 
     def validate(self, attrs):
         season = attrs.get("season")
-        number = attrs.get("number")
         date = attrs.get("date")
-
         if season is None:
-            raise serializers.ValidationError(
-                {
-                    "season": (
-                        "La temporada es obligatoria."
-                    )
-                }
-            )
-
-        if number is None:
-            raise serializers.ValidationError(
-                {
-                    "number": (
-                        "El número de jornada es obligatorio."
-                    )
-                }
-            )
-
+            raise serializers.ValidationError({"season": "La temporada es obligatoria."})
         if date is None:
-            raise serializers.ValidationError(
-                {
-                    "date": (
-                        "La fecha de la jornada es obligatoria."
-                    )
-                }
-            )
-
-        existing_week = LeagueWeek.objects.filter(
-            season=season,
-            number=number,
-        )
-
-        if self.instance is not None:
-            existing_week = existing_week.exclude(
-                pk=self.instance.pk,
-            )
-
-        if existing_week.exists():
-            raise serializers.ValidationError(
-                {
-                    "number": (
-                        "Ya existe una jornada con este número "
-                        "en esta temporada."
-                    )
-                }
-            )
-
-        previous_week = (
-            LeagueWeek.objects
-            .filter(
-                season=season,
-                number__lt=number,
-            )
-            .order_by("-number")
-            .first()
-        )
-
-        if previous_week is not None:
-            if date <= previous_week.date:
-                raise serializers.ValidationError(
-                    {
-                        "date": (
-                            "La fecha de la jornada debe ser "
-                            "posterior a la fecha de la jornada "
-                            "anterior."
-                        )
-                    }
-                )
-
-        next_week = (
-            LeagueWeek.objects
-            .filter(
-                season=season,
-                number__gt=number,
-            )
-            .order_by("number")
-            .first()
-        )
-
-        if next_week is not None:
-            if date >= next_week.date:
-                raise serializers.ValidationError(
-                    {
-                        "date": (
-                            "La fecha de la jornada debe ser "
-                            "anterior a la fecha de la jornada "
-                            "siguiente."
-                        )
-                    }
-                )
-
+            raise serializers.ValidationError({"date": "La fecha de la jornada es obligatoria."})
+        if season.finalized_at is not None:
+            raise serializers.ValidationError({"season": "No se pueden añadir jornadas a una temporada finalizada."})
+        if LeagueWeek.objects.filter(season=season, date=date).exists():
+            raise serializers.ValidationError({"date": "Ya existe una jornada en esa fecha."})
+        if season.end_date is not None and date > season.end_date:
+            raise serializers.ValidationError({"date": "La jornada no puede quedar fuera de la temporada."})
+        if date < season.start_date:
+            raise serializers.ValidationError({"date": "La jornada no puede ser anterior al inicio de la temporada."})
         return attrs
+
+    def create(self, validated_data):
+        from .services import LeagueWeekService
+
+        season = validated_data["season"]
+        next_number = (
+            LeagueWeek.objects.filter(season=season).aggregate(value=Max("number"))["value"] or 0
+        ) + 1
+        if not validated_data.get("weekly_event"):
+            validated_data["weekly_event"] = LeagueWeekService._choose_balanced_event(season)
+        return LeagueWeek.objects.create(number=next_number, **validated_data)
 
 
 class PlayerDeckStatsSerializer(serializers.Serializer):
@@ -272,11 +194,13 @@ class SeasonSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "active",
+            "finalized_at",
             "weeks_count",
             "created_at",
         ]
         read_only_fields = [
             "id",
+            "finalized_at",
             "weeks_count",
             "created_at",
         ]
@@ -318,6 +242,43 @@ class SeasonSerializer(serializers.ModelSerializer):
             )
 
         return attrs
+
+
+class LeagueSettingsSerializer(serializers.ModelSerializer):
+    mode_display = serializers.CharField(source="get_mode_display", read_only=True)
+
+    class Meta:
+        model = LeagueSettings
+        fields = [
+            "mode",
+            "mode_display",
+            "subscription_fee",
+            "prize_pool_percent",
+            "paypal_url",
+            "free_league_notice",
+            "updated_at",
+        ]
+        read_only_fields = ["mode_display", "updated_at"]
+
+    def validate_prize_pool_percent(self, value):
+        if value < 0 or value > 100:
+            raise serializers.ValidationError("El porcentaje debe estar entre 0 y 100.")
+        return value
+
+
+class PrizePoolSummarySerializer(serializers.Serializer):
+    month = serializers.DateField()
+    premium_participants = serializers.IntegerField()
+    subscription_fee = serializers.DecimalField(max_digits=6, decimal_places=2)
+    prize_pool_percent = serializers.DecimalField(max_digits=5, decimal_places=2)
+    carry_in = serializers.DecimalField(max_digits=10, decimal_places=2)
+    monthly_contribution = serializers.DecimalField(max_digits=10, decimal_places=2)
+    manual_adjustment = serializers.DecimalField(max_digits=10, decimal_places=2)
+    distributed_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total = serializers.DecimalField(max_digits=10, decimal_places=2)
+    top_1 = serializers.DecimalField(max_digits=10, decimal_places=2)
+    top_2 = serializers.DecimalField(max_digits=10, decimal_places=2)
+    top_3 = serializers.DecimalField(max_digits=10, decimal_places=2)
 
 
 class ScoringRuleSerializer(serializers.ModelSerializer):

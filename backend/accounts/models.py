@@ -30,13 +30,25 @@ class Player(AbstractUser):
 
     def has_active_subscription(self, on_date=None):
         on_date = on_date or timezone.localdate()
+        # Una cuenta marcada como Premium sin fecha de fin se considera
+        # una suscripción indefinida hasta que administración la cambie.
         return (
             self.membership_plan == self.MembershipPlan.SUPPORTER
-            and self.subscription_paid_until is not None
-            and self.subscription_paid_until >= on_date
+            and (
+                self.subscription_paid_until is None
+                or self.subscription_paid_until >= on_date
+            )
         )
 
     def weekly_match_limit(self, on_date=None):
+        # En modo gratuito todos los jugadores pueden disputar hasta 3 partidas
+        # por jornada. En modo de suscripción, la modalidad estándar queda en 1
+        # y la premium permite hasta 3.
+        from league.models import LeagueSettings
+
+        settings = LeagueSettings.load()
+        if settings.mode == LeagueSettings.LeagueMode.FREE:
+            return 3
         return 3 if self.has_active_subscription(on_date=on_date) else 1
 
     def __str__(self):

@@ -6,12 +6,15 @@ from .views import (
     LeagueWeekCloseAPIView,
     LeagueWeekCreateAPIView,
     LeagueWeekListAPIView,
+    LeagueSettingsAPIView,
     PlayerStatsAPIView,
+    PrizePoolAPIView,
     ScoringRuleCreateAPIView,
     ScoringRuleDetailAPIView,
     ScoringRuleListAPIView,
     SeasonCreateAPIView,
     SeasonDetailAPIView,
+    SeasonFinalizeAPIView,
     SeasonListAPIView,
     StandingsAPIView,
     standings_view,
@@ -34,6 +37,8 @@ urlpatterns = [
         CurrentWeekAPIView.as_view(),
         name="api-current-week",
     ),
+    path("settings/", LeagueSettingsAPIView.as_view(), name="api-league-settings"),
+    path("prize-pool/", PrizePoolAPIView.as_view(), name="api-prize-pool"),
 
     path(
         "seasons/",
@@ -50,6 +55,7 @@ urlpatterns = [
         SeasonDetailAPIView.as_view(),
         name="api-season-detail",
     ),
+    path("seasons/<int:pk>/finalize/", SeasonFinalizeAPIView.as_view(), name="api-season-finalize"),
 
     path(
         "scoring-rules/",

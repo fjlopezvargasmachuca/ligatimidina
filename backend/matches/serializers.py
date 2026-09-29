@@ -115,6 +115,24 @@ class MatchPlayerUpdateSerializer(serializers.ModelSerializer):
                 "No se puede modificar una partida de una jornada cerrada."
             )
 
+        participates = attrs.get(
+            "participates_in_weekly_event",
+            getattr(self.instance, "participates_in_weekly_event", False),
+        )
+        if participates:
+            already_awarded = MatchPlayer.objects.filter(
+                player=self.instance.player,
+                match__league_week=match.league_week,
+                participates_in_weekly_event=True,
+            ).exclude(pk=self.instance.pk).exists()
+            if already_awarded:
+                raise serializers.ValidationError({
+                    "participates_in_weekly_event": (
+                        "La bonificación del evento semanal solo puede concederse una vez "
+                        "por jugador y jornada."
+                    )
+                })
+
         extra_points = attrs.get("extra_points", getattr(self.instance, "extra_points", 0))
         reason = attrs.get(
             "extra_points_reason",
@@ -385,19 +403,31 @@ class MatchPlayerCreateSerializer(serializers.ModelSerializer):
                 {"player": "Este jugador ya está registrado en la partida."}
             )
 
-        # Límite semanal de participación: 1 partida para modalidad gratuita
-        # y hasta 3 con suscripción mensual vigente. Se valida en backend para
-        # que no dependa del formulario del administrador.
+        # El límite depende de la modalidad global de la liga y, cuando hay
+        # suscripción, de la modalidad del jugador.
         week_games = MatchPlayer.objects.filter(
             player=player,
             match__league_week=match.league_week,
         ).exclude(match=match).count()
         limit = player.weekly_match_limit(on_date=match.league_week.date)
         if week_games >= limit:
-            label = "suscripción activa" if limit == 3 else "participación gratuita"
             raise serializers.ValidationError({
-                "player": f"Límite semanal alcanzado: {limit} partida(s) con {label}."
+                "player": f"Límite semanal alcanzado: {limit} partida(s) en esta jornada."
             })
+
+        if attrs.get("participates_in_weekly_event", False):
+            already_awarded = MatchPlayer.objects.filter(
+                player=player,
+                match__league_week=match.league_week,
+                participates_in_weekly_event=True,
+            ).exclude(match=match).exists()
+            if already_awarded:
+                raise serializers.ValidationError({
+                    "participates_in_weekly_event": (
+                        "La bonificación del evento semanal solo puede concederse una vez "
+                        "por jugador y jornada."
+                    )
+                })
 
         extra_points = attrs.get("extra_points", 0)
         reason = attrs.get("extra_points_reason", "").strip()

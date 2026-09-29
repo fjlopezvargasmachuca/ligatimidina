@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 96" role="img" aria-labelledby="title desc">
+  <title id="title">Liga Timidina</title>
+  <desc id="desc">Emblema de una carta con una doble hélice y cinco puntos de maná estilizados.</desc>
+  <defs>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#18112b"/><stop offset="1" stop-color="#3b176e"/>
+    </linearGradient>
+    <linearGradient id="helix" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c4b5fd"/><stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(4 4)">
+    <rect x="0" y="0" width="72" height="88" rx="16" fill="url(#card)"/>
+    <rect x="7" y="7" width="58" height="74" rx="12" fill="none" stroke="#ffffff" stroke-opacity=".22"/>
+    <path d="M22 18c26 10 26 20 0 30s-26 20 0 30M50 18c-26 10-26 20 0 30s26 20 0 30" fill="none" stroke="url(#helix)" stroke-width="4" stroke-linecap="round"/>
+    <path d="M25 27h22M22 39h28M22 57h28M25 69h22" stroke="#fff" stroke-opacity=".68" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="14" cy="14" r="3" fill="#60a5fa"/><circle cx="58" cy="14" r="3" fill="#f8fafc"/><circle cx="14" cy="74" r="3" fill="#ef4444"/><circle cx="58" cy="74" r="3" fill="#22c55e"/><circle cx="36" cy="83" r="3" fill="#111827" stroke="#d1d5db"/>
+  </g>
+  <g fill="#18181b">
+    <text x="92" y="43" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="29" font-weight="800" letter-spacing="-1">LIGA TIMIDINA</text>
+    <text x="94" y="66" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2.5" fill="#7c3aed">COMMANDER LEAGUE</text>
+  </g>
+</svg>

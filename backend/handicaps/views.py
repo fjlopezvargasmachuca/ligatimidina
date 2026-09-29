@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 
 from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView, RetrieveUpdateAPIView
+from rest_framework.generics import CreateAPIView, ListAPIView, RetrieveAPIView, RetrieveUpdateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -13,9 +13,11 @@ from matches.models import Match, MatchPlayer
 from .models import Handicap, HandicapCategoryConfig, HandicapDefinition, HandicapGrant
 from .permissions import IsAdminUserOrReadOnly
 from .serializers import (
+    HandicapAdminUpdateSerializer,
     HandicapAssignmentSerializer,
     HandicapCategoryConfigSerializer,
     HandicapDefinitionSerializer,
+    HandicapGrantAdminUpdateSerializer,
     HandicapGrantSerializer,
     HandicapGrantUseSerializer,
     HandicapRevealSerializer,
@@ -49,10 +51,20 @@ class HandicapDefinitionCreateAPIView(CreateAPIView):
     permission_classes = [IsAuthenticated, IsAdminUserOrReadOnly]
 
 
-class HandicapDefinitionDetailAPIView(RetrieveUpdateAPIView):
+class HandicapDefinitionDetailAPIView(RetrieveUpdateDestroyAPIView):
     queryset = HandicapDefinition.objects.all()
     serializer_class = HandicapDefinitionSerializer
     permission_classes = [IsAuthenticated, IsAdminUserOrReadOnly]
+
+    def destroy(self, request, *args, **kwargs):
+        definition = self.get_object()
+        if definition.assignments.exists() or definition.grants.exists():
+            return Response(
+                {"detail": "Esta definición ya forma parte del histórico y no puede borrarse. Puedes desactivarla."},
+                status=400,
+            )
+        definition.delete()
+        return Response(status=204)
 
 
 class HandicapListAPIView(ListAPIView):
@@ -89,23 +101,47 @@ class HandicapListAPIView(ListAPIView):
         return queryset
 
 
-class HandicapDetailAPIView(RetrieveAPIView):
-    serializer_class = HandicapSerializer
+class HandicapDetailAPIView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = Handicap.objects.select_related(
-            "player",
-            "definition",
-            "season",
-            "awarded_by",
-            "source_grant",
-            "assigned_by_player",
-            "awarded_after_match",
+            "player", "definition", "season", "awarded_by", "source_grant",
+            "assigned_by_player", "awarded_after_match",
         ).prefetch_related("usage__match_player__match")
         if self.request.user.is_staff:
             return queryset
         return queryset.filter(player=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method in {"PUT", "PATCH"}:
+            return HandicapAdminUpdateSerializer
+        return HandicapSerializer
+
+    def update(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            raise PermissionDenied("Solo administración puede editar un No te flipes lanzado.")
+        super().update(request, *args, **kwargs)
+        obj = self.get_object()
+        HandicapService.recalculate_season(obj.season)
+        return Response(HandicapSerializer(obj).data)
+
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            raise PermissionDenied("Solo administración puede eliminar un No te flipes lanzado.")
+        handicap = self.get_object()
+        if handicap.used:
+            return Response({"detail": "No se puede eliminar un No te flipes que ya se canjeó en una partida."}, status=400)
+        grant = handicap.source_grant
+        season = handicap.season
+        handicap.delete()
+        if grant is not None:
+            grant.target_player = None
+            grant.used_at = None
+            grant.reversed = False
+            grant.save(update_fields=["target_player", "used_at", "reversed"])
+        HandicapService.recalculate_season(season)
+        return Response(status=204)
 
 
 class HandicapAssignmentAPIView(CreateAPIView):
@@ -178,6 +214,43 @@ class HandicapGrantListAPIView(ListAPIView):
         return MyHandicapGrantSerializer
 
 
+class HandicapGrantDetailAPIView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    queryset = HandicapGrant.objects.select_related(
+        "holder", "definition", "season", "awarded_by", "target_player"
+    ).prefetch_related("handicap")
+
+    def get_queryset(self):
+        if not self.request.user.is_staff:
+            return super().get_queryset().none()
+        return super().get_queryset()
+
+    def get_serializer_class(self):
+        if self.request.method in {"PUT", "PATCH"}:
+            return HandicapGrantAdminUpdateSerializer
+        return HandicapGrantSerializer
+
+    def _ensure_admin(self):
+        if not self.request.user.is_staff:
+            raise PermissionDenied("Solo administración puede modificar premios concedidos.")
+
+    def update(self, request, *args, **kwargs):
+        self._ensure_admin()
+        super().update(request, *args, **kwargs)
+        return Response(HandicapGrantSerializer(self.get_object()).data)
+
+    def destroy(self, request, *args, **kwargs):
+        self._ensure_admin()
+        grant = self.get_object()
+        if hasattr(grant, "handicap"):
+            return Response(
+                {"detail": "El premio ya fue lanzado. Elimina primero el No te flipes lanzado si todavía no se ha canjeado."},
+                status=400,
+            )
+        grant.delete()
+        return Response(status=204)
+
+
 class MyHandicapGrantListAPIView(ListAPIView):
     """Endpoint explícito para el panel del jugador. Nunca devuelve el tipo."""
 
@@ -187,6 +260,7 @@ class MyHandicapGrantListAPIView(ListAPIView):
     def get_queryset(self):
         return HandicapGrant.objects.filter(
             holder=self.request.user,
+            season__active=True,
         ).order_by("-awarded_at")
 
 

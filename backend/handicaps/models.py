@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Max
 
 
 class HandicapCategoryConfig(models.Model):
@@ -28,7 +29,7 @@ class HandicapCategoryConfig(models.Model):
 class HandicapDefinition(models.Model):
     CATEGORY_CHOICES = HandicapCategoryConfig.CATEGORY_CHOICES
 
-    code = models.SlugField(max_length=80, unique=True, verbose_name="Código")
+    code = models.CharField(max_length=80, unique=True, editable=False, verbose_name="Código")
     name = models.CharField(max_length=120, verbose_name="Nombre")
     description = models.TextField(blank=True, verbose_name="Descripción")
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES, verbose_name="Categoría")
@@ -47,6 +48,12 @@ class HandicapDefinition(models.Model):
         ordering = ["category", "name"]
         verbose_name = "Definición de No te flipes"
         verbose_name_plural = "Definiciones de No te flipes"
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            next_id = (HandicapDefinition.objects.aggregate(value=Max("id"))["value"] or 0) + 1
+            self.code = f"NTF-{next_id:04d}"
+        return super().save(*args, **kwargs)
 
     def clean(self):
         errors = {}

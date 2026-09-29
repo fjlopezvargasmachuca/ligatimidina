@@ -1427,3 +1427,51 @@
   flex: 1 1 28rem;
   margin: 0;
 }
+
+/* Ronda 4: iconografía y controles de liga */
+.admin-nav-icon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.admin-brand-mark {
+  background: url('/favicon.svg') center/cover no-repeat;
+  color: transparent;
+}
+.admin-button.danger {
+  border-color: #fecaca;
+  background: #fff7f7;
+  color: #b91c1c;
+}
+.admin-button.danger:hover { background:#fef2f2; }
+.admin-prize-summary { display:grid; gap:12px; }
+.admin-season-item { align-items:center; }
+.admin-season-item > div:first-child { display:grid; gap:3px; }
+.admin-season-item small { color:#8b8f9c; font-size:10px; }
+.admin-empty-icon .admin-nav-icon { width:34px; height:34px; }
+
+/* Ronda 5: gestión sin desplazamiento horizontal */
+.admin-users-table { min-width:0; table-layout:fixed; }
+.admin-users-table th,.admin-users-table td { padding:10px 7px; overflow-wrap:anywhere; vertical-align:top; }
+.admin-users-table th:nth-child(1) { width:17%; }
+.admin-users-table th:nth-child(2) { width:20%; }
+.admin-users-table th:nth-child(3) { width:12%; }
+.admin-users-table th:nth-child(4) { width:10%; }
+.admin-users-table th:nth-child(5) { width:14%; }
+.admin-users-table th:nth-child(6) { width:27%; }
+.admin-users-table .admin-table-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.admin-users-table .admin-button { white-space:normal; line-height:1.2; }
+.admin-card-wide .admin-table-wrap { overflow-x:visible; max-height:650px; overflow-y:auto; }
+@media (max-width: 760px) {
+  .admin-users-table th:nth-child(2),.admin-users-table td:nth-child(2),
+  .admin-users-table th:nth-child(5),.admin-users-table td:nth-child(5) { display:none; }
+  .admin-users-table th:nth-child(1) { width:28%; }
+  .admin-users-table th:nth-child(3) { width:18%; }
+  .admin-users-table th:nth-child(4) { width:16%; }
+  .admin-users-table th:nth-child(6) { width:38%; }
+}

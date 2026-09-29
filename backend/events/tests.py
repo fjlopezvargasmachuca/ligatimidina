@@ -107,7 +107,7 @@ class WeeklyEventAPITest(TestCase):
         self.event.refresh_from_db()
         self.assertEqual(self.event.name, "Archenemy")
 
-    def test_admin_cannot_update_event_after_creation(self):
+    def test_admin_can_update_event_before_it_is_historical(self):
         self.client.force_authenticate(user=self.admin)
 
         response = self.client.patch(
@@ -119,11 +119,11 @@ class WeeklyEventAPITest(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 200)
 
         self.event.refresh_from_db()
-        self.assertEqual(self.event.name, "Archenemy")
-        self.assertEqual(self.event.extra_points, 3)
+        self.assertEqual(self.event.name, "Archenemy actualizado")
+        self.assertEqual(self.event.extra_points, 5)
 
     def create_closed_week(self):
         season = Season.objects.create(
@@ -153,7 +153,7 @@ class WeeklyEventAPITest(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 400)
 
         self.event.refresh_from_db()
         self.assertEqual(self.event.name, "Archenemy")
@@ -171,7 +171,7 @@ class WeeklyEventAPITest(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 400)
 
         self.event.refresh_from_db()
         self.assertEqual(self.event.rules, "Reglas del evento.")
@@ -189,7 +189,7 @@ class WeeklyEventAPITest(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 400)
 
         self.event.refresh_from_db()
         self.assertEqual(self.event.extra_points, 3)
@@ -207,7 +207,7 @@ class WeeklyEventAPITest(TestCase):
             format="json",
         )
 
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 400)
 
         self.event.refresh_from_db()
         self.assertTrue(self.event.active)
@@ -231,3 +231,24 @@ class WeeklyEventAPITest(TestCase):
         self.assertFalse(
             WeeklyEvent.objects.filter(name="Evento inválido").exists()
         )
+    def test_admin_can_delete_event_not_used_by_closed_week(self):
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(f"/api/events/{self.event.id}/")
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(WeeklyEvent.objects.filter(pk=self.event.id).exists())
+
+    def test_admin_cannot_delete_event_used_by_closed_week(self):
+        self.create_closed_week()
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(f"/api/events/{self.event.id}/")
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(WeeklyEvent.objects.filter(pk=self.event.id).exists())
+
+    def test_deleting_event_releases_open_week_assignment(self):
+        season = Season.objects.create(name="Futura", start_date=date.today(), active=True)
+        week = LeagueWeek.objects.create(season=season, number=1, date=date.today(), weekly_event=self.event, closed=False)
+        self.client.force_authenticate(user=self.admin)
+        response = self.client.delete(f"/api/events/{self.event.id}/")
+        self.assertEqual(response.status_code, 204)
+        week.refresh_from_db()
+        self.assertIsNone(week.weekly_event_id)

@@ -4,9 +4,11 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 from accounts.models import Player
 from decks.models import Deck
-from league.models import LeagueWeek, ScoringRule, Season
+from league.models import LeagueSettings, LeagueWeek, ScoringRule, Season
+from events.models import WeeklyEvent
 from .models import Elimination, Match, MatchPlayer
 from .services import MatchService
+from .serializers import MatchPlayerCreateSerializer
 from handicaps.models import Handicap, HandicapCategoryConfig, HandicapDefinition
 from handicaps.services import HandicapService
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -1361,3 +1363,25 @@ class MatchDeleteHistoricalHandicapTest(TestCase):
         self.assertTrue(
             Match.objects.filter(id=later.id).exists()
         )
+
+class WeeklyEventBonusLimitTest(TestCase):
+    def test_event_bonus_can_only_be_marked_once_per_player_and_week(self):
+        settings = LeagueSettings.load()
+        settings.mode = LeagueSettings.LeagueMode.FREE
+        settings.save()
+        admin = Player.objects.create_user(username="bonus-admin", password="test1234", is_staff=True)
+        player = Player.objects.create_user(username="bonus-player", password="test1234")
+        deck = Deck.objects.create(owner=player, name="Bonus deck", commander="Commander")
+        season = Season.objects.create(name="Bonus", start_date="2026-09-01")
+        event = WeeklyEvent.objects.create(name="Bonus event", description="x", rules="x", extra_points=4)
+        week = LeagueWeek.objects.create(season=season, number=1, date="2026-09-07", weekly_event=event)
+        first = Match.objects.create(league_week=week, administrator=admin, played_at=aware_datetime(2026, 9, 7, 19))
+        second = Match.objects.create(league_week=week, administrator=admin, played_at=aware_datetime(2026, 9, 8, 19))
+        MatchPlayer.objects.create(match=first, player=player, deck=deck, participates_in_weekly_event=True)
+        request = type("Request", (), {"user": admin})()
+        serializer = MatchPlayerCreateSerializer(
+            data={"player": player.id, "deck": deck.id, "participates_in_weekly_event": True},
+            context={"match": second, "request": request},
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("participates_in_weekly_event", serializer.errors)

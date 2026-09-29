@@ -55,6 +55,7 @@ class HandicapDefinitionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "code",
             "category_display",
             "selection_percentage",
             "created_at",
@@ -263,6 +264,33 @@ class HandicapGrantSerializer(serializers.ModelSerializer):
 
     def get_used(self, obj):
         return obj.used
+
+
+class HandicapGrantAdminUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = HandicapGrant
+        fields = ["award_reason"]
+
+    def validate_award_reason(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("El motivo no puede quedar vacío.")
+        return value
+
+
+class HandicapAdminUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Handicap
+        fields = ["award_reason", "grace_games_snapshot", "penalty_points_snapshot"]
+
+    def validate(self, attrs):
+        if self.instance and self.instance.used:
+            protected = {"grace_games_snapshot", "penalty_points_snapshot"}.intersection(attrs.keys())
+            if protected:
+                raise serializers.ValidationError(
+                    "Una penalización ya canjeada conserva sus valores históricos; solo puede editarse el motivo."
+                )
+        return attrs
 
 
 class MyHandicapGrantSerializer(serializers.ModelSerializer):

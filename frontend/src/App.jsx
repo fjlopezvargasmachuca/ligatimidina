@@ -111,7 +111,7 @@ function enrichAdminStandings(standings, handicaps, grants) {
   })
 }
 
-function LoginForm({ onAuthenticated }) {
+function LoginForm({ onAuthenticated, cookiesAllowed }) {
   const [form, setForm] = useState({
     username: '',
     password: '',
@@ -123,6 +123,10 @@ function LoginForm({ onAuthenticated }) {
 
   async function handleSubmit(event) {
     event.preventDefault()
+    if (!cookiesAllowed) {
+      setError('Para iniciar sesión debes aceptar las cookies técnicas necesarias para mantener la sesión y proteger los formularios.')
+      return
+    }
     setLoading(true)
     setError('')
     setSuccess('')
@@ -220,7 +224,7 @@ function LoginForm({ onAuthenticated }) {
   )
 }
 
-function RegisterForm({ onBack }) {
+function RegisterForm({ onBack, cookiesAllowed }) {
   const [form, setForm] = useState({
     username: '',
     first_name: '',
@@ -238,6 +242,10 @@ function RegisterForm({ onBack }) {
 
   async function handleSubmit(event) {
     event.preventDefault()
+    if (!cookiesAllowed) {
+      setError('Para crear una cuenta debes aceptar las cookies técnicas necesarias para proteger el formulario.')
+      return
+    }
     setLoading(true)
     setError('')
     setSuccess('')
@@ -416,6 +424,7 @@ function RegisterForm({ onBack }) {
               <li>Respeta a jugadores, organización, administración y personal de la tienda, dentro y fuera del espacio de juego cuando el incidente esté relacionado con la liga.</li>
               <li>No se toleran amenazas, acoso, insultos, discriminación, trampas, suplantación, manipulación de resultados ni uso abusivo de la aplicación.</li>
               <li>Las discrepancias de partida se resuelven con calma y se trasladan a administración; no se utilizará la aplicación para hostigar a otros jugadores.</li>
+              <li>Las partidas de liga se plantean como Commander Bracket 3 (Upgraded): hasta 3 Game Changers, sin negación masiva de tierras ni combos intencionados de dos cartas que cierren la partida de forma temprana.</li>
               <li>Las infracciones pueden implicar advertencias, suspensión o expulsión de la liga y de sus servicios. Los incidentes graves podrán comunicarse a la tienda y, cuando corresponda, a las autoridades competentes.</li>
               <li>El nombre y apellidos se solicitan para identificar correctamente a participantes y gestionar incidencias. No se muestran en el perfil público.</li>
             </ul>
@@ -490,6 +499,13 @@ function Navbar({
           </button>
 
           <button
+            className={activeView === 'binders' ? 'active' : ''}
+            onClick={() => onViewChange('binders')}
+          >
+            Carpetas
+          </button>
+
+          <button
             className={
               activeView === 'profile'
                 ? 'active'
@@ -554,11 +570,11 @@ function getStatusIconClass(type) {
 function getStatusIcon(type) {
   switch (type) {
     case 'NO_TE_FLIPES_AVAILABLE':
-      return '⚡'
+      return '✦'
     case 'HANDICAP_ACTIVE':
-      return '⛓'
+      return '☠'
     case 'PENALTY_ACTIVE':
-      return '!'
+      return 'Φ'
     default:
       return '•'
   }
@@ -770,7 +786,7 @@ function PlayerProfileModal({ player, onClose }) {
           <h3>Mazos activos</h3>
           <div className="public-profile-decks">
             {decks.length ? decks.map((deck) => <article className="public-deck-card" key={deck.id}>
-              <div className="public-deck-heading"><div><strong>{deck.name}</strong><span>{deck.commander}</span></div>{deck.analysis?.bracket && <b className="public-bracket">Bracket {deck.analysis.bracket}</b>}</div>
+              <div className="public-deck-heading"><div><strong>{deck.name}</strong><span>{deck.commander}</span></div>{(deck.bracket || deck.analysis?.bracket) && <b className="public-bracket">Bracket {deck.bracket || deck.analysis?.bracket}</b>}</div>
               {deck.deck_url && <a href={deck.deck_url} target="_blank" rel="noreferrer">Ver en DeckCheck ↗</a>}
               {deck.card_list && <DeckCardListViewer deck={deck} />}
             </article>) : <div className="empty-message">No tiene mazos activos.</div>}
@@ -815,15 +831,53 @@ function WeeklyEventModal({ week, onClose }) {
   )
 }
 
-function SupportCard({ user }) {
-  return <section className="league-card support-card">
-    <div className="section-title"><span>Apoya la liga</span><h2>Inscripción y premios</h2></div>
-    <p><strong>Suscripción: 10 € al mes.</strong> La modalidad gratuita permite hasta 1 partida por jornada; con suscripción mensual validada, hasta 3.</p>
-    <p className="support-distribution">De las aportaciones destinadas a la liga: <strong>40%</strong> se reserva para premios a participantes y <strong>60%</strong> para organización, tienda y mantenimiento de la web.</p>
-    <a className="app-button paypal-button" href="https://paypal.me/machukador/10" target="_blank" rel="noreferrer">Pagar / aportar 10 € con PayPal ↗</a>
-    <small>El pago no activa automáticamente la suscripción: administración debe validarlo. Estado actual: <strong>{user?.subscription_active ? 'suscripción activa' : 'modalidad gratuita'}</strong>.</small>
+function formatLeagueDate(value) {
+  if (!value) return 'sin fecha'
+  return new Date(`${value}T12:00:00`).toLocaleDateString('es-ES')
+}
+
+function PrizePoolCard({ pool }) {
+  if (!pool) return null
+  return <section className="league-card prize-pool-card">
+    <div className="section-title"><span>Premios para el top 3</span><h2>Bote acumulado</h2></div>
+    <div className="prize-pool-total"><strong>{Number(pool.total || 0).toFixed(2)} €</strong><span>Bote disponible</span></div>
+    <div className="prize-podium">
+      <div><b>1.º</b><strong>{Number(pool.top_1 || 0).toFixed(2)} €</strong><span>50%</span></div>
+      <div><b>2.º</b><strong>{Number(pool.top_2 || 0).toFixed(2)} €</strong><span>30%</span></div>
+      <div><b>3.º</b><strong>{Number(pool.top_3 || 0).toFixed(2)} €</strong><span>20%</span></div>
+    </div>
+    <p>Este mes hay <strong>{pool.premium_participants || 0}</strong> participantes premium y se reserva el <strong>{pool.prize_pool_percent || 0}%</strong> de sus cuotas para premios.</p>
+    <small>Los premios se entregarán en material de Magic: The Gathering proporcionado por la tienda.</small>
   </section>
 }
+
+function FreeLeagueNotice({ settings }) {
+  return <section className="league-card free-league-card">
+    <div className="section-title"><span>Liga gratuita</span><h2>Hasta 3 partidas por jornada</h2></div>
+    <p>{settings?.free_league_notice}</p>
+  </section>
+}
+
+function MembershipCard({ user, settings }) {
+  const premiumMode = settings?.mode === 'PREMIUM'
+  if (!premiumMode) {
+    return <section className="league-card membership-card">
+      <div className="section-title"><span>Modalidad</span><h2>Liga gratuita</h2></div>
+      <p>Todos los jugadores activos pueden disputar hasta <strong>3 partidas por jornada</strong>.</p>
+      <p className="membership-warning">{settings?.free_league_notice}</p>
+    </section>
+  }
+  const premium = Boolean(user?.subscription_active)
+  return <section className="league-card membership-card">
+    <div className="section-title"><span>Tu modalidad</span><h2>{premium ? 'Premium' : 'Estándar'}</h2></div>
+    <p>{premium ? 'Puedes disputar hasta 3 partidas por jornada.' : 'La modalidad estándar permite 1 partida por jornada.'}</p>
+    <p><strong>Premium: {Number(settings?.subscription_fee || 10).toFixed(2)} € al mes.</strong> Permite hasta 3 partidas por jornada y contribuye al bote mensual de premios.</p>
+    <p className="membership-warning">El respeto es obligatorio en cualquier modalidad. Insultos, amenazas, acoso, trampas o faltas graves/reiteradas pueden implicar suspensión o expulsión de la liga aunque exista una suscripción abonada.</p>
+    <a className="app-button paypal-button" href={settings?.paypal_url || 'https://paypal.me/machukador/10'} target="_blank" rel="noreferrer">Pagar suscripción con PayPal ↗</a>
+    <small>La activación se valida desde administración. {user?.subscription_paid_until ? `Abonada hasta ${user.subscription_paid_until}.` : ''}</small>
+  </section>
+}
+
 
 function LeagueView({ user }) {
   const [data, setData] = useState(null)
@@ -899,19 +953,17 @@ function LeagueView({ user }) {
 
   return (
     <main className="page-content">
-      <div className="league-heading">
-        <div>
+      <div className="league-heading league-heading-centered">
+        <img className="league-heading-logo" src="/liga-timidina-logo.svg" alt="Liga Timidina" />
+        <div className="league-heading-title">
           <span>Clasificación</span>
-          <h1>
-            {data?.season?.name || 'Liga Timidina'}
-          </h1>
+          <h1>{data?.season?.name || 'Liga Timidina'}</h1>
         </div>
 
         <div className="league-season-date">
-          {data?.season?.start_date}
-          {data?.season?.end_date
-            ? ` → ${data.season.end_date}`
-            : ''}
+          <strong>Temporada {data?.season?.name || ''}:</strong>{' '}
+          {formatLeagueDate(data?.season?.start_date)}
+          {data?.season?.end_date ? ` – ${formatLeagueDate(data.season.end_date)}` : ''}
         </div>
       </div>
 
@@ -928,8 +980,13 @@ function LeagueView({ user }) {
         </div>}
       </div>
 
-      <div className="league-layout">
-        <section className="league-card">
+      <div className={`league-layout ${data?.league_settings?.mode === 'PREMIUM' ? 'league-layout--premium' : 'league-layout--free'}`}>
+        <aside className="league-prize-sidebar">
+          {data?.league_settings?.mode === 'PREMIUM'
+            ? <PrizePoolCard pool={data?.prize_pool} />
+            : <FreeLeagueNotice settings={data?.league_settings} />}
+        </aside>
+        <section className="league-card league-standings-card">
           <div className="league-table-wrap">
             <table className="league-table">
               <thead>
@@ -939,7 +996,7 @@ function LeagueView({ user }) {
                   <th>Puntos</th>
                   <th>Victorias</th>
                   <th>Partidas</th>
-                  <th>Eliminaciones</th>
+                  <th title="Eliminaciones">Elim.</th>
                   <th>Semanas</th>
                 </tr>
               </thead>
@@ -979,7 +1036,6 @@ function LeagueView({ user }) {
 
         <aside className="league-sidebar">
           <NoTeFlipesCard currentUserId={user?.id} />
-          <SupportCard user={user} />
         </aside>
       </div>
       {selectedPlayer && <PlayerProfileModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />}
@@ -1127,7 +1183,7 @@ function DecksView({ user }) {
 
   async function deleteDeck(deck) {
     const confirmed = window.confirm(
-      `¿Eliminar el mazo "${deck.name}"? Si ya se ha usado en una partida, el backend puede impedir el borrado para proteger el histórico.`,
+      `¿Eliminar el mazo "${deck.name}"? Si ya se ha usado en una partida, puede estar protegido para conservar el histórico.`,
     )
     if (!confirmed) return
 
@@ -1404,17 +1460,20 @@ function AccountSettingsCard({ user, onUserUpdated }) {
 function ProfileView({ user, onUserUpdated }) {
   const [stats, setStats] = useState(null)
   const [profileDecks, setProfileDecks] = useState([])
+  const [leagueSettings, setLeagueSettings] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function load() {
       try {
-        const [response, deckResponse] = await Promise.all([
+        const [response, deckResponse, settingsResponse] = await Promise.all([
           api.get(`/league/players/${user.id}/stats/`),
           api.get('/decks/mine/'),
+          api.get('/league/settings/'),
         ])
         setStats(response)
         setProfileDecks(asArray(deckResponse))
+        setLeagueSettings(settingsResponse)
       } catch {
         setStats(null)
       } finally {
@@ -1470,6 +1529,8 @@ function ProfileView({ user, onUserUpdated }) {
             </div>
           </div>
 
+          <MembershipCard user={user} settings={leagueSettings} />
+
           <section className="league-card">
             <div className="section-title">
               <span>Historial</span>
@@ -1513,7 +1574,7 @@ function ProfileView({ user, onUserUpdated }) {
 
           <section className="league-card profile-decks-section">
             <div className="section-title"><span>Mazos</span><h2>Mis mazos guardados</h2></div>
-            <div className="deck-list">{profileDecks.length ? profileDecks.map((deck) => <article className="deck-item" key={deck.id}><div className="deck-item-main"><div><strong>{deck.name}</strong><span>{deck.commander}</span></div>{deck.analysis?.bracket && <span className="deck-status active">Bracket {deck.analysis.bracket}</span>}</div>{deck.deck_url && <a className="deckcheck-link" href={deck.deck_url} target="_blank" rel="noreferrer">Ver en DeckCheck ↗</a>}<DeckCardListViewer deck={deck}/></article>) : <div className="empty-message">No tienes mazos guardados.</div>}</div>
+            <div className="deck-list">{profileDecks.length ? profileDecks.map((deck) => <article className="deck-item" key={deck.id}><div className="deck-item-main"><div><strong>{deck.name}</strong><span>{deck.commander}</span></div>{(deck.bracket || deck.analysis?.bracket) && <span className="deck-status active">Bracket {deck.bracket || deck.analysis?.bracket}</span>}</div>{deck.deck_url && <a className="deckcheck-link" href={deck.deck_url} target="_blank" rel="noreferrer">Ver en DeckCheck ↗</a>}<DeckCardListViewer deck={deck}/></article>) : <div className="empty-message">No tienes mazos guardados.</div>}</div>
           </section>
 
           <PlayerHandicapsCard playerId={user.id} />
@@ -1533,12 +1594,183 @@ function ProfileView({ user, onUserUpdated }) {
   )
 }
 
+const BINDER_CONDITIONS = [
+  ['MT', 'Mint'], ['NM', 'Near Mint'], ['EX', 'Excellent'], ['GD', 'Good'],
+  ['LP', 'Light Played'], ['PL', 'Played'], ['PO', 'Poor'],
+]
+
+function BindersView({ user }) {
+  const [binders, setBinders] = useState([])
+  const [mine, setMine] = useState(null)
+  const [selected, setSelected] = useState(null)
+  const [page, setPage] = useState(0)
+  const [flip, setFlip] = useState('')
+  const [binderForm, setBinderForm] = useState({ title: 'Mi carpeta', description: '', public: true })
+  const [cardForm, setCardForm] = useState({ card_name: '', condition: 'NM', foil: false, quantity: 1 })
+  const [editingCardId, setEditingCardId] = useState(null)
+  const [suggestions, setSuggestions] = useState([])
+  const [notice, setNotice] = useState('')
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  async function load(preferredId = null) {
+    setError('')
+    try {
+      const [listResponse, mineResponse] = await Promise.all([
+        api.get('/binders/'),
+        api.get('/binders/mine/'),
+      ])
+      const list = asArray(listResponse)
+      const myBinder = mineResponse?.exists ? mineResponse : null
+      setBinders(list)
+      setMine(myBinder)
+      if (myBinder) setBinderForm({ title: myBinder.title || 'Mi carpeta', description: myBinder.description || '', public: myBinder.public !== false })
+      const targetId = preferredId || selected?.id || myBinder?.id || list[0]?.id
+      if (targetId) {
+        const detail = Number(targetId) === Number(myBinder?.id) ? myBinder : await api.get(`/binders/${targetId}/`)
+        setSelected(detail)
+      } else {
+        setSelected(null)
+      }
+    } catch (err) {
+      setError(appErrorMessage(err, 'No se han podido cargar las carpetas.'))
+    }
+  }
+
+  useEffect(() => { load() }, [user.id])
+
+  useEffect(() => {
+    const query = cardForm.card_name.trim()
+    if (query.length < 2 || editingCardId) { setSuggestions([]); return undefined }
+    const timer = setTimeout(async () => {
+      try {
+        const response = await api.get(`/decks/commanders/autocomplete/?q=${encodeURIComponent(query)}`)
+        setSuggestions((response?.results || []).slice(0, 10))
+      } catch { setSuggestions([]) }
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [cardForm.card_name, editingCardId])
+
+  async function saveBinder(event) {
+    event.preventDefault(); setSaving(true); setError(''); setNotice('')
+    try {
+      const response = await api.post('/binders/mine/', binderForm)
+      setNotice(mine ? 'Carpeta actualizada.' : 'Carpeta creada.')
+      setMine(response); setSelected(response); await load(response.id)
+    } catch (err) { setError(appErrorMessage(err)) } finally { setSaving(false) }
+  }
+
+  function resetCardForm() {
+    setEditingCardId(null)
+    setCardForm({ card_name: '', condition: 'NM', foil: false, quantity: 1 })
+    setSuggestions([])
+  }
+
+  async function saveCard(event) {
+    event.preventDefault(); setSaving(true); setError(''); setNotice('')
+    try {
+      const payload = { ...cardForm, quantity: Number(cardForm.quantity) }
+      if (editingCardId) await api.patch(`/binders/mine/cards/${editingCardId}/`, payload)
+      else await api.post('/binders/mine/cards/', payload)
+      setNotice(editingCardId ? 'Carta actualizada.' : 'Carta añadida a tu carpeta.')
+      resetCardForm(); setPage(0); await load(mine?.id)
+    } catch (err) { setError(appErrorMessage(err, 'No se ha podido guardar la carta.')) } finally { setSaving(false) }
+  }
+
+  function editCard(card) {
+    setEditingCardId(card.id)
+    setCardForm({ card_name: card.card_name, condition: card.condition, foil: Boolean(card.foil), quantity: card.quantity || 1 })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function deleteCard(card) {
+    if (!window.confirm(`¿Quitar “${card.card_name}” de tu carpeta?`)) return
+    try { await api.delete(`/binders/mine/cards/${card.id}/`); await load(mine?.id); setNotice('Carta eliminada de tu carpeta.') }
+    catch (err) { setError(appErrorMessage(err)) }
+  }
+
+  async function refreshCardPrice(card) {
+    setSaving(true); setError('')
+    try { await api.post(`/binders/mine/cards/${card.id}/refresh/`); await load(mine?.id); setNotice(`Referencia de ${card.card_name} actualizada.`) }
+    catch (err) { setError(appErrorMessage(err, 'No se ha podido actualizar la referencia.')) }
+    finally { setSaving(false) }
+  }
+
+  async function openBinder(item) {
+    try {
+      const detail = Number(item.id) === Number(mine?.id) ? mine : await api.get(`/binders/${item.id}/`)
+      setSelected(detail); setPage(0)
+    } catch (err) { setError(appErrorMessage(err)) }
+  }
+
+  function turnPage(nextPage, direction) {
+    setFlip(direction)
+    window.setTimeout(() => { setPage(nextPage); setFlip('') }, 180)
+  }
+
+  const cards = selected?.cards || []
+  const pageSize = 6
+  const pageCount = Math.max(1, Math.ceil(cards.length / pageSize))
+  const safePage = Math.min(page, pageCount - 1)
+  const pageCards = cards.slice(safePage * pageSize, safePage * pageSize + pageSize)
+  const ownSelected = Number(selected?.owner_id) === Number(user.id)
+
+  return <main className="page-content binder-page">
+    <div className="league-heading"><div><span>Comunidad</span><h1>Carpetas de cartas</h1><p>Escaparates personales para enseñar cartas disponibles. La Liga Timidina no intermedia pagos ni compraventas.</p></div></div>
+    {error && <div className="app-alert error">{error}</div>}
+    {notice && <div className="app-alert success">{notice}</div>}
+
+    <div className="binder-layout">
+      <aside className="league-card binder-owners">
+        <div className="section-title"><span>Jugadores</span><h2>Carpetas públicas</h2></div>
+        <div className="binder-owner-list">
+          {mine && <button className={Number(selected?.id) === Number(mine.id) ? 'active' : ''} type="button" onClick={() => openBinder(mine)}><b>Mi carpeta</b><small>{mine.cards?.length || 0} cartas · editable</small></button>}
+          {binders.filter((item) => Number(item.owner_id) !== Number(user.id)).map((item) => <button className={Number(selected?.id) === Number(item.id) ? 'active' : ''} type="button" key={item.id} onClick={() => openBinder(item)}><b>{item.owner_name || item.owner_username}</b><small>@{item.owner_username} · {item.cards_count} cartas</small></button>)}
+          {!mine && binders.length === 0 && <div className="empty-message">Todavía no hay carpetas.</div>}
+        </div>
+      </aside>
+
+      <section className="league-card binder-book-card">
+        {selected ? <>
+          <div className="binder-book-head"><div><span>{ownSelected ? 'Tu escaparate' : `@${selected.owner_username}`}</span><h2>{selected.title}</h2>{selected.description && <p>{selected.description}</p>}</div><b>Página {safePage + 1} / {pageCount}</b></div>
+          <div className={`binder-sheet ${flip}`}>
+            {pageCards.length ? pageCards.map((card) => <article className="binder-card" key={card.id}>
+              <div className="binder-card-image">{card.image_url ? <img src={card.image_url} alt={card.card_name} loading="lazy" /> : <span>Sin imagen</span>}{card.foil && <b className="foil-badge">FOIL</b>}</div>
+              <div className="binder-card-info"><strong>{card.card_name}</strong><span>{card.condition_display} · {card.quantity} ud.</span><div className="binder-price"><small>Referencia Cardmarket</small><b>{card.reference_price_eur != null ? `${Number(card.reference_price_eur).toFixed(2)} €` : 'Sin precio'}</b></div>{card.market_url && <a href={card.market_url} target="_blank" rel="noreferrer">Comprobar en Cardmarket ↗</a>}{ownSelected && <div className="binder-card-actions"><button type="button" onClick={() => editCard(card)}>Editar</button><button type="button" onClick={() => refreshCardPrice(card)} disabled={saving}>Actualizar precio</button><button type="button" onClick={() => deleteCard(card)}>Quitar</button></div>}</div>
+            </article>) : <div className="binder-empty-page">Esta carpeta todavía no tiene cartas.</div>}
+          </div>
+          <div className="binder-page-controls"><button type="button" disabled={safePage <= 0 || flip} onClick={() => turnPage(safePage - 1, 'flip-back')}>← Página anterior</button><button type="button" disabled={safePage >= pageCount - 1 || flip} onClick={() => turnPage(safePage + 1, 'flip-next')}>Página siguiente →</button></div>
+          <p className="binder-price-note">Los importes son referencias EUR obtenidas a través de Scryfall para la impresión consultada y pueden no coincidir con la oferta más barata en tiempo real. Comprueba edición, idioma, estado y acabado en Cardmarket antes de acordar una operación.</p>
+        </> : <div className="binder-empty-page">Crea tu carpeta para empezar a exhibir cartas.</div>}
+      </section>
+
+      <aside className="league-card binder-editor">
+        <div className="section-title"><span>Tu carpeta</span><h2>{mine ? 'Editar escaparate' : 'Crear carpeta'}</h2></div>
+        <form className="binder-form" onSubmit={saveBinder}>
+          <label>Título<input value={binderForm.title} maxLength={100} onChange={(e) => setBinderForm({...binderForm, title:e.target.value})} required /></label>
+          <label>Descripción<textarea rows="3" value={binderForm.description} onChange={(e) => setBinderForm({...binderForm, description:e.target.value})} /></label>
+          <label className="rules-accept"><input type="checkbox" checked={binderForm.public} onChange={(e) => setBinderForm({...binderForm, public:e.target.checked})}/><span>Visible para los demás jugadores</span></label>
+          <button className="app-button primary" disabled={saving}>{mine ? 'Guardar carpeta' : 'Crear mi carpeta'}</button>
+        </form>
+        {mine && <form className="binder-form binder-card-form" onSubmit={saveCard}>
+          <h3>{editingCardId ? 'Editar carta' : 'Añadir carta'}</h3>
+          <label className="binder-autocomplete">Carta<input value={cardForm.card_name} autoComplete="off" onChange={(e) => setCardForm({...cardForm, card_name:e.target.value})} required />{suggestions.length > 0 && <div className="binder-suggestions">{suggestions.map((name) => <button type="button" key={name} onClick={() => { setCardForm({...cardForm, card_name:name}); setSuggestions([]) }}>{name}</button>)}</div>}</label>
+          <div className="binder-form-row"><label>Estado<select value={cardForm.condition} onChange={(e) => setCardForm({...cardForm, condition:e.target.value})}>{BINDER_CONDITIONS.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Cantidad<input type="number" min="1" max="99" value={cardForm.quantity} onChange={(e) => setCardForm({...cardForm, quantity:e.target.value})}/></label></div>
+          <label className="rules-accept"><input type="checkbox" checked={cardForm.foil} onChange={(e) => setCardForm({...cardForm, foil:e.target.checked})}/><span>Foil</span></label>
+          <div className="binder-card-actions"><button className="app-button primary" disabled={saving}>{editingCardId ? 'Guardar cambios' : 'Añadir a carpeta'}</button>{editingCardId && <button className="app-button ghost" type="button" onClick={resetCardForm}>Cancelar</button>}</div>
+        </form>}
+      </aside>
+    </div>
+  </main>
+}
+
 function ContactView({ user }) {
   const [messages, setMessages] = useState([])
   const [form, setForm] = useState({ subject: '', message: '' })
   const [replyDrafts, setReplyDrafts] = useState({})
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
+  const [collapsed, setCollapsed] = useState({})
 
   async function load() {
     try {
@@ -1586,6 +1818,14 @@ function ContactView({ user }) {
     }
   }
 
+  async function deleteConversation(item) {
+    if (!window.confirm(`¿Eliminar definitivamente la conversación “${item.subject}”?`)) return
+    try {
+      await api.delete(`/accounts/contact/${item.id}/`)
+      await load()
+    } catch (err) { setError(appErrorMessage(err)) }
+  }
+
   return <main className="page-content">
     <div className="league-heading"><div><span>Soporte</span><h1>Contacto con administración</h1></div></div>
     {error && <div className="app-alert error">{error}</div>}
@@ -1607,8 +1847,9 @@ function ContactView({ user }) {
         {messages.length ? messages.map((item) => <article className={`contact-thread ${item.read ? '' : 'unread'}`} key={item.id}>
           <div className="contact-thread-head">
             <div><strong>{item.subject}</strong><span>{item.sender_name || item.sender_username} · @{item.sender_username} · {new Date(item.created_at).toLocaleString('es-ES')}</span></div>
-            <div className="contact-thread-badges"><span>{item.closed ? 'Cerrada' : 'Abierta'}</span>{!item.read && <b>Nueva</b>}</div>
+            <div className="contact-thread-badges"><span>{item.closed ? 'Cerrada' : 'Abierta'}</span>{!item.read && <b>Nueva</b>}<button className="contact-collapse" type="button" onClick={() => setCollapsed((current) => ({...current, [item.id]: !current[item.id]}))}>{collapsed[item.id] ? 'Mostrar' : 'Minimizar'}</button></div>
           </div>
+          {!collapsed[item.id] && <>
           <div className="contact-bubble user-bubble"><small>{item.sender_name || item.sender_username}</small><p>{item.message}</p></div>
           {(item.replies || []).map((reply) => <div className={`contact-bubble ${reply.sender_is_staff ? 'admin-bubble' : 'user-bubble'}`} key={reply.id}>
             <small>{reply.sender_is_staff ? 'Administración' : (reply.sender_name || reply.sender_username)} · {new Date(reply.created_at).toLocaleString('es-ES')}</small>
@@ -1621,31 +1862,63 @@ function ContactView({ user }) {
           {user.is_staff && <div className="contact-admin-actions">
             {!item.read && <button className="app-button ghost" type="button" onClick={() => updateConversation(item, { read: true })}>Marcar como leído</button>}
             <button className="app-button ghost" type="button" onClick={() => updateConversation(item, { closed: !item.closed })}>{item.closed ? 'Reabrir' : 'Cerrar conversación'}</button>
+            <button className="app-button danger" type="button" onClick={() => deleteConversation(item)}>Eliminar</button>
           </div>}
+          </>}
         </article>) : <div className="empty-message">No hay mensajes.</div>}
       </div>
     </section>
   </main>
 }
 
+const COOKIE_CONSENT_KEY = 'liga_timidina_cookie_consent'
+
+function CookieConsent({ consent, onAccept, onReject }) {
+  if (consent === 'accepted') return null
+  return <div className="cookie-banner" role="dialog" aria-live="polite" aria-label="Preferencias de cookies">
+    <div>
+      <strong>Cookies técnicas</strong>
+      <p>La aplicación solo utiliza cookies técnicas de sesión y seguridad. Son necesarias para iniciar sesión y proteger los formularios; no usamos cookies publicitarias ni de analítica.</p>
+      {consent === 'rejected' && <small>Has rechazado las cookies. No se iniciará ninguna sesión mientras mantengas esta elección.</small>}
+    </div>
+    <div className="cookie-actions">
+      <button className="app-button ghost" type="button" onClick={onReject}>Rechazar</button>
+      <button className="app-button primary" type="button" onClick={onAccept}>Aceptar cookies técnicas</button>
+    </div>
+  </div>
+}
+
+
+function LeagueRulesModal({ onClose }) {
+  return createPortal(<div className="profile-modal-backdrop" onMouseDown={onClose}><section className="profile-modal rules-modal" onMouseDown={(e) => e.stopPropagation()}><button className="profile-modal-close" type="button" onClick={onClose}>×</button><span className="event-modal-eyebrow">Normas permanentes</span><h2>Normas de la Liga Timidina · Commander Bracket 3</h2><div className="league-rules-full"><h3>Formato de juego</h3><ul><li>Commander multijugador: mazo de 100 cartas contando el comandante, identidad de color y singleton salvo tierras básicas o cartas que indiquen lo contrario.</li><li>Las mesas se plantean normalmente para 4 jugadores. Cada jugador empieza con 40 vidas; recibir 21 o más puntos de daño de combate del mismo comandante durante la partida hace perder la partida.</li><li>La liga se juega con intención de <strong>Bracket 3 · Upgraded</strong>: mazos mejorados, con buena sinergia y calidad de cartas, pero sin planteamiento cEDH.</li><li>Se permiten hasta <strong>3 Game Changers</strong>. No se permite negación masiva de tierras ni combos intencionados de dos cartas que cierren la partida de forma temprana. Los turnos extra no deben encadenarse ni formar bucles.</li><li>Antes de empezar, los jugadores deben comunicar de buena fe elementos relevantes del mazo que puedan cambiar las expectativas de la mesa.</li></ul><h3>Convivencia</h3><ul><li>El respeto es obligatorio con jugadores, administración, organización y personal de la tienda, tanto en liga gratuita como de pago.</li><li>No se toleran insultos, amenazas, acoso, discriminación, trampas, manipulación de resultados ni hostigamiento mediante la aplicación.</li><li>Las discrepancias se tratan con calma y se trasladan a administración. Las conductas graves o reiteradas pueden implicar suspensión o <strong>expulsión de la liga</strong>, aunque el participante tenga una suscripción abonada.</li></ul><p className="rules-source-note">Las reglas de construcción y la lista de Game Changers pueden actualizarse. Consulta también la referencia oficial de Commander de Magic.</p><a className="app-button ghost" href="https://magic.wizards.com/en/formats/commander" target="_blank" rel="noreferrer">Reglas oficiales de Commander ↗</a></div></section></div>, document.body)
+}
+
 function AppFooter() {
-  return <footer className="app-footer">
-    <span>© {new Date().getFullYear()} Liga Timidina · Todos los derechos reservados.</span>
+  const [showRules, setShowRules] = useState(false)
+  return <><footer className="app-footer">
+    <span>© {new Date().getFullYear()} Liga Timidina · Todos los derechos reservados. <button className="footer-rules-link" type="button" onClick={() => setShowRules(true)}>Normas de la liga</button></span>
     <span className="partner-strip">Colaboraciones / servicios:
       <a href="https://magic.wizards.com/" target="_blank" rel="noreferrer"><img src="/partners/magic.svg" alt="" />Magic: The Gathering</a>
       <a href="https://deckcheck.co/" target="_blank" rel="noreferrer"><img src="/partners/deckcheck.svg" alt="" />DeckCheck</a>
       <a href="https://www.adadoypluma.es/" target="_blank" rel="noreferrer"><img src="/partners/adadoypluma.svg" alt="" />A Dado y Pluma · Triana</a>
     </span>
-  </footer>
+  </footer>{showRules && <LeagueRulesModal onClose={() => setShowRules(false)} />}</>
 }
 
 function App() {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem(COOKIE_CONSENT_KEY))
+  const [loading, setLoading] = useState(cookieConsent === 'accepted')
   const [authMode, setAuthMode] = useState('login')
   const [activeView, setActiveView] = useState('league')
 
   useEffect(() => {
+    if (cookieConsent !== 'accepted') {
+      setLoading(false)
+      setUser(null)
+      return
+    }
+    setLoading(true)
     async function loadCurrentUser() {
       try {
         const currentUser = await api.get(
@@ -1661,7 +1934,19 @@ function App() {
     }
 
     loadCurrentUser()
-  }, [])
+  }, [cookieConsent])
+
+  function acceptCookies() {
+    localStorage.setItem(COOKIE_CONSENT_KEY, 'accepted')
+    setCookieConsent('accepted')
+  }
+
+  function rejectCookies() {
+    localStorage.setItem(COOKIE_CONSENT_KEY, 'rejected')
+    setCookieConsent('rejected')
+    setUser(null)
+    document.cookie = 'csrftoken=; Max-Age=0; path=/'
+  }
 
   async function handleLogout() {
     try {
@@ -1695,8 +1980,9 @@ function App() {
     if (authMode === 'register') {
       return (
         <>
-          <RegisterForm onAuthenticated={handleAuthenticated} onBack={() => setAuthMode('login')} />
+          <RegisterForm onAuthenticated={handleAuthenticated} onBack={() => setAuthMode('login')} cookiesAllowed={cookieConsent === 'accepted'} />
           <AppFooter />
+          <CookieConsent consent={cookieConsent} onAccept={acceptCookies} onReject={rejectCookies} />
         </>
       )
     }
@@ -1705,6 +1991,7 @@ function App() {
       <>
         <LoginForm
           onAuthenticated={handleAuthenticated}
+          cookiesAllowed={cookieConsent === 'accepted'}
         />
 
         <button
@@ -1714,6 +2001,7 @@ function App() {
           ¿Todavía no tienes cuenta? Crear cuenta
         </button>
         <AppFooter />
+        <CookieConsent consent={cookieConsent} onAccept={acceptCookies} onReject={rejectCookies} />
       </>
     )
   }
@@ -1735,6 +2023,10 @@ function App() {
         <DecksView user={user} />
       )}
 
+      {activeView === 'binders' && (
+        <BindersView user={user} />
+      )}
+
       {activeView === 'profile' && (
         <ProfileView user={user} onUserUpdated={setUser} />
       )}
@@ -1745,6 +2037,7 @@ function App() {
         <AdminDashboard currentUser={user} />
       )}
       <AppFooter />
+      <CookieConsent consent={cookieConsent} onAccept={acceptCookies} onReject={rejectCookies} />
     </div>
   )
 }

@@ -192,7 +192,7 @@ export default function NoTeFlipesCard({ currentUserId }) {
   return <>
     <section className="card no-te-flipes-card">
       <div className="card__eyebrow">No te flipes</div>
-      <div className="no-te-flipes-card__heading"><div><h2 className="card__title">Tu poder</h2><p className="no-te-flipes-card__intro">Elige objetivo. El backend decide el resultado; la ruleta solo lo representa.</p></div>{availableGrants.length > 0 && <span className="no-te-flipes-card__badge">{availableGrants.length === 1 ? '1 disponible' : `${availableGrants.length} disponibles`}</span>}</div>
+      <div className="no-te-flipes-card__heading"><div><h2 className="card__title">Tu poder</h2><p className="no-te-flipes-card__intro">Elige un objetivo y gira la ruleta para descubrir el resultado.</p></div>{availableGrants.length > 0 && <span className="no-te-flipes-card__badge">{availableGrants.length === 1 ? '1 disponible' : `${availableGrants.length} disponibles`}</span>}</div>
       {availableGrant ? <form className="no-te-flipes-card__form" onSubmit={launch}>
         <label htmlFor="no-te-flipes-target">Jugador objetivo</label>
         <select id="no-te-flipes-target" value={targetPlayer} onChange={(event) => setTargetPlayer(event.target.value)} disabled={saving}>
@@ -213,7 +213,7 @@ function RouletteWheel({ geometry, onEnd, dark = false }) {
     <span className="no-te-flipes-roulette__pointer">▼</span>
     <div className={`no-te-flipes-roulette__wheel no-te-flipes-roulette__wheel--spinning ${dark ? 'dark-wheel' : ''}`} onAnimationEnd={onEnd} style={{ '--roulette-gradient': `conic-gradient(${geometry.gradient})`, '--roulette-rotation': `${geometry.rotation}deg` }}>
       {geometry.segments.map((segment) => <span className="no-te-flipes-roulette__segment-label" key={segment.id} style={{ transform: `rotate(${segment.center}deg) translateY(var(--roulette-label-radius)) rotate(-${segment.center}deg)` }}>{segment.name}</span>)}
-      <div className="no-te-flipes-roulette__wheel-center">{dark ? '↩' : '🎲'}</div>
+      <div className="no-te-flipes-roulette__wheel-center">{dark ? '↩' : '✦'}</div>
     </div>
   </div>
 }

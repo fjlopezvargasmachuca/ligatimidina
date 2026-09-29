@@ -6,6 +6,7 @@ from rest_framework.generics import (
     CreateAPIView,
     ListAPIView,
     RetrieveUpdateAPIView,
+    RetrieveUpdateDestroyAPIView,
 )
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -13,18 +14,20 @@ from rest_framework.views import APIView
 
 from events.models import WeeklyEvent
 
-from .models import LeagueWeek, ScoringRule, Season
+from .models import LeagueSettings, LeagueWeek, ScoringRule, Season
 from .permissions import IsAdminUserOrReadOnly
 from .serializers import (
     LeagueWeekAdminSerializer,
     LeagueWeekCreateSerializer,
     LeagueWeekSerializer,
+    LeagueSettingsSerializer,
     PlayerStatsSerializer,
+    PrizePoolSummarySerializer,
     ScoringRuleSerializer,
     SeasonSerializer,
     StandingSerializer,
 )
-from .services import LeagueWeekService, RankingService
+from .services import LeagueWeekService, PrizePoolService, RankingService, SeasonService
 from .standing_status import StandingStatusService
 
 
@@ -105,6 +108,12 @@ class StandingsAPIView(APIView):
                     "start_date": season.start_date,
                     "end_date": season.end_date,
                 },
+                "league_settings": LeagueSettingsSerializer(LeagueSettings.load()).data,
+                "prize_pool": (
+                    PrizePoolSummarySerializer(PrizePoolService.summary()).data
+                    if LeagueSettings.load().mode == LeagueSettings.LeagueMode.PREMIUM
+                    else None
+                ),
                 "standings": StandingSerializer(
                     standings,
                     many=True,
@@ -179,7 +188,7 @@ class SeasonCreateAPIView(CreateAPIView):
             )
 
 
-class SeasonDetailAPIView(RetrieveUpdateAPIView):
+class SeasonDetailAPIView(RetrieveUpdateDestroyAPIView):
     queryset = Season.objects.all()
     serializer_class = SeasonSerializer
     permission_classes = [
@@ -189,6 +198,8 @@ class SeasonDetailAPIView(RetrieveUpdateAPIView):
 
     def update(self, request, *args, **kwargs):
         season = self.get_object()
+        if season.finalized_at is not None:
+            return Response({"detail": "Una temporada finalizada queda protegida como histórico."}, status=400)
         calendar_changed = any(field in request.data for field in ("start_date", "end_date"))
 
         if calendar_changed and season.weeks.filter(matches__isnull=False).exists():
@@ -254,6 +265,59 @@ class SeasonDetailAPIView(RetrieveUpdateAPIView):
         return response
 
 
+    def destroy(self, request, *args, **kwargs):
+        season = self.get_object()
+        if season.weeks.filter(matches__isnull=False).exists():
+            return Response(
+                {"detail": "No se puede eliminar una temporada que ya contiene partidas."},
+                status=400,
+            )
+        season.delete()
+        return Response(status=204)
+
+
+class SeasonFinalizeAPIView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUserOrReadOnly]
+
+    def post(self, request, pk):
+        season = Season.objects.filter(pk=pk).first()
+        if season is None:
+            return Response({"detail": "La temporada no existe."}, status=404)
+        try:
+            SeasonService.finalize(season)
+        except ValidationError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(SeasonSerializer(season).data)
+
+
+class LeagueSettingsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(LeagueSettingsSerializer(LeagueSettings.load()).data)
+
+    def patch(self, request):
+        if not request.user.is_staff:
+            return Response({"detail": "Solo administración puede cambiar la configuración de la liga."}, status=403)
+        settings = LeagueSettings.load()
+        serializer = LeagueSettingsSerializer(settings, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+
+class PrizePoolAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        settings = LeagueSettings.load()
+        if settings.mode != LeagueSettings.LeagueMode.PREMIUM:
+            return Response({"enabled": False, "detail": "La liga está en modalidad gratuita."})
+        data = PrizePoolSummarySerializer(PrizePoolService.summary()).data
+        data["enabled"] = True
+        return Response(data)
+
+
 class ScoringRuleListAPIView(ListAPIView):
     serializer_class = ScoringRuleSerializer
     permission_classes = [
@@ -302,7 +366,7 @@ class ScoringRuleCreateAPIView(CreateAPIView):
         serializer.save()
 
 
-class ScoringRuleDetailAPIView(RetrieveUpdateAPIView):
+class ScoringRuleDetailAPIView(RetrieveUpdateDestroyAPIView):
     queryset = ScoringRule.objects.select_related(
         "season",
     )
@@ -351,6 +415,16 @@ class ScoringRuleDetailAPIView(RetrieveUpdateAPIView):
             *args,
             **kwargs,
         )
+
+    def destroy(self, request, *args, **kwargs):
+        rule = self.get_object()
+        if rule.season.weeks.filter(closed=True).exists():
+            return Response(
+                {"detail": "No se puede eliminar una regla que ya pertenece al histórico de una jornada cerrada."},
+                status=400,
+            )
+        rule.delete()
+        return Response(status=204)
 
 
 class LeagueWeekAdminAPIView(
