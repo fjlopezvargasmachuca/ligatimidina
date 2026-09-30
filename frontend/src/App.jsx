@@ -1612,6 +1612,7 @@ function BindersView({ user }) {
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [selectedCardIds, setSelectedCardIds] = useState([])
 
   async function load(preferredId = null) {
     setError('')
@@ -1629,8 +1630,10 @@ function BindersView({ user }) {
       if (targetId) {
         const detail = Number(targetId) === Number(myBinder?.id) ? myBinder : await api.get(`/binders/${targetId}/`)
         setSelected(detail)
+        setSelectedCardIds([])
       } else {
         setSelected(null)
+        setSelectedCardIds([])
       }
     } catch (err) {
       setError(appErrorMessage(err, 'No se han podido cargar las carpetas.'))
@@ -1689,6 +1692,33 @@ function BindersView({ user }) {
     catch (err) { setError(appErrorMessage(err)) }
   }
 
+  function toggleCardSelection(cardId) {
+    setSelectedCardIds((current) => current.includes(cardId)
+      ? current.filter((id) => id !== cardId)
+      : [...current, cardId])
+  }
+
+  function toggleAllCards() {
+    const allIds = cards.map((card) => card.id)
+    const allSelected = allIds.length > 0 && allIds.every((id) => selectedCardIds.includes(id))
+    setSelectedCardIds(allSelected ? [] : allIds)
+  }
+
+  async function deleteSelectedCards() {
+    if (!selectedCardIds.length) return
+    const amount = selectedCardIds.length
+    if (!window.confirm(`¿Eliminar ${amount} ${amount === 1 ? 'carta seleccionada' : 'cartas seleccionadas'} de tu carpeta? Esta acción no se puede deshacer.`)) return
+    setSaving(true); setError(''); setNotice('')
+    try {
+      const response = await api.post('/binders/mine/cards/bulk-delete/', { ids: selectedCardIds })
+      setSelectedCardIds([])
+      setNotice(`${response?.deleted || amount} ${amount === 1 ? 'carta eliminada' : 'cartas eliminadas'} de tu carpeta.`)
+      await load(mine?.id)
+    } catch (err) {
+      setError(appErrorMessage(err, 'No se han podido eliminar las cartas seleccionadas.'))
+    } finally { setSaving(false) }
+  }
+
   async function refreshCardPrice(card) {
     setSaving(true); setError('')
     try { await api.post(`/binders/mine/cards/${card.id}/refresh/`); await load(mine?.id); setNotice(`Referencia de ${card.card_name} actualizada.`) }
@@ -1699,7 +1729,7 @@ function BindersView({ user }) {
   async function openBinder(item) {
     try {
       const detail = Number(item.id) === Number(mine?.id) ? mine : await api.get(`/binders/${item.id}/`)
-      setSelected(detail); setPage(0)
+      setSelected(detail); setPage(0); setSelectedCardIds([])
     } catch (err) { setError(appErrorMessage(err)) }
   }
 
@@ -1733,10 +1763,15 @@ function BindersView({ user }) {
       <section className="league-card binder-book-card">
         {selected ? <>
           <div className="binder-book-head"><div><span>{ownSelected ? 'Tu escaparate' : `@${selected.owner_username}`}</span><h2>{selected.title}</h2>{selected.description && <p>{selected.description}</p>}</div><b>Página {safePage + 1} / {pageCount}</b></div>
+          {ownSelected && cards.length > 0 && <div className="binder-bulk-toolbar">
+            <label><input type="checkbox" checked={cards.length > 0 && cards.every((card) => selectedCardIds.includes(card.id))} onChange={toggleAllCards} /><span>Seleccionar todas ({cards.length})</span></label>
+            <span>{selectedCardIds.length} seleccionadas</span>
+            <button className="app-button danger" type="button" disabled={!selectedCardIds.length || saving} onClick={deleteSelectedCards}>Eliminar seleccionadas</button>
+          </div>}
           <div className={`binder-sheet ${flip}`}>
-            {pageCards.length ? pageCards.map((card) => <article className="binder-card" key={card.id}>
+            {pageCards.length ? pageCards.map((card) => <article className={`binder-card ${selectedCardIds.includes(card.id) ? 'selected' : ''}`} key={card.id}>
               <div className="binder-card-image">{card.image_url ? <img src={card.image_url} alt={card.card_name} loading="lazy" /> : <span>Sin imagen</span>}{card.foil && <b className="foil-badge">FOIL</b>}</div>
-              <div className="binder-card-info"><strong>{card.card_name}</strong><span>{card.condition_display} · {card.quantity} ud.</span><div className="binder-price"><small>Referencia Cardmarket</small><b>{card.reference_price_eur != null ? `${Number(card.reference_price_eur).toFixed(2)} €` : 'Sin precio'}</b></div>{card.market_url && <a href={card.market_url} target="_blank" rel="noreferrer">Comprobar en Cardmarket ↗</a>}{ownSelected && <div className="binder-card-actions"><button type="button" onClick={() => editCard(card)}>Editar</button><button type="button" onClick={() => refreshCardPrice(card)} disabled={saving}>Actualizar precio</button><button type="button" onClick={() => deleteCard(card)}>Quitar</button></div>}</div>
+              <div className="binder-card-info"><strong>{card.card_name}</strong><span>{card.condition_display} · {card.quantity} ud.</span><div className="binder-price"><small>Referencia Cardmarket</small><b>{card.reference_price_eur != null ? `${Number(card.reference_price_eur).toFixed(2)} €` : 'Sin precio'}</b></div>{card.market_url && <a href={card.market_url} target="_blank" rel="noreferrer">Comprobar en Cardmarket ↗</a>}{ownSelected && <><label className="binder-select-card"><input type="checkbox" checked={selectedCardIds.includes(card.id)} onChange={() => toggleCardSelection(card.id)} /><span>Seleccionar para eliminar</span></label><div className="binder-card-actions"><button type="button" onClick={() => editCard(card)}>Editar</button><button type="button" onClick={() => refreshCardPrice(card)} disabled={saving}>Actualizar precio</button><button type="button" onClick={() => deleteCard(card)}>Quitar</button></div></>}</div>
             </article>) : <div className="binder-empty-page">Esta carpeta todavía no tiene cartas.</div>}
           </div>
           <div className="binder-page-controls"><button type="button" disabled={safePage <= 0 || flip} onClick={() => turnPage(safePage - 1, 'flip-back')}>← Página anterior</button><button type="button" disabled={safePage >= pageCount - 1 || flip} onClick={() => turnPage(safePage + 1, 'flip-next')}>Página siguiente →</button></div>
@@ -1753,11 +1788,12 @@ function BindersView({ user }) {
           <button className="app-button primary" disabled={saving}>{mine ? 'Guardar carpeta' : 'Crear mi carpeta'}</button>
         </form>
         {mine && <form className="binder-form binder-card-form" onSubmit={saveCard}>
-          <h3>{editingCardId ? 'Editar carta' : 'Añadir carta'}</h3>
+          <div className="binder-card-form-title"><h3>{editingCardId ? 'Editar carta' : 'Añadir carta'}</h3><span>{mine.cards?.length || 0}/100</span></div>
+          {!editingCardId && (mine.cards?.length || 0) >= 100 && <div className="binder-limit-note">Has alcanzado el límite de 100 cartas. Elimina alguna para poder añadir otra.</div>}
           <label className="binder-autocomplete">Carta<input value={cardForm.card_name} autoComplete="off" onChange={(e) => setCardForm({...cardForm, card_name:e.target.value})} required />{suggestions.length > 0 && <div className="binder-suggestions">{suggestions.map((name) => <button type="button" key={name} onClick={() => { setCardForm({...cardForm, card_name:name}); setSuggestions([]) }}>{name}</button>)}</div>}</label>
           <div className="binder-form-row"><label>Estado<select value={cardForm.condition} onChange={(e) => setCardForm({...cardForm, condition:e.target.value})}>{BINDER_CONDITIONS.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Cantidad<input type="number" min="1" max="99" value={cardForm.quantity} onChange={(e) => setCardForm({...cardForm, quantity:e.target.value})}/></label></div>
           <label className="rules-accept"><input type="checkbox" checked={cardForm.foil} onChange={(e) => setCardForm({...cardForm, foil:e.target.checked})}/><span>Foil</span></label>
-          <div className="binder-card-actions"><button className="app-button primary" disabled={saving}>{editingCardId ? 'Guardar cambios' : 'Añadir a carpeta'}</button>{editingCardId && <button className="app-button ghost" type="button" onClick={resetCardForm}>Cancelar</button>}</div>
+          <div className="binder-card-actions"><button className="app-button primary" disabled={saving || (!editingCardId && (mine.cards?.length || 0) >= 100)}>{editingCardId ? 'Guardar cambios' : 'Añadir a carpeta'}</button>{editingCardId && <button className="app-button ghost" type="button" onClick={resetCardForm}>Cancelar</button>}</div>
         </form>}
       </aside>
     </div>

@@ -81,6 +81,66 @@ class BinderAPITest(TestCase):
         self.client.force_authenticate(user=self.other)
         self.assertEqual(self.client.get(f"/api/binders/{self.binder.id}/").status_code, 404)
 
+    @patch("binders.serializers.CardMarketReferenceService.lookup")
+    def test_owner_cannot_exceed_one_hundred_card_entries(self, lookup):
+        lookup.return_value = {
+            "card_name": "Overflow Card",
+            "image_url": "https://cards.scryfall.io/overflow.jpg",
+            "market_url": "https://www.cardmarket.com/en/Magic/Products/Search?searchString=Overflow+Card",
+            "reference_price_eur": Decimal("0.10"),
+            "price_checked_at": timezone.now(),
+        }
+        BinderCard.objects.bulk_create([
+            BinderCard(
+                binder=self.binder, card_name=f"Card {index}", condition="NM",
+                foil=False, quantity=1,
+            )
+            for index in range(2, 101)
+        ])
+        self.assertEqual(self.binder.cards.count(), 100)
+
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post("/api/binders/mine/cards/", {
+            "card_name": "Overflow Card", "condition": "NM", "foil": False, "quantity": 1,
+        }, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("límite de 100", response.data["detail"])
+        self.assertEqual(self.binder.cards.count(), 100)
+        lookup.assert_not_called()
+
+    def test_owner_can_bulk_delete_selected_cards(self):
+        second = BinderCard.objects.create(
+            binder=self.binder, card_name="Arcane Signet", condition="NM", foil=False, quantity=1,
+        )
+        third = BinderCard.objects.create(
+            binder=self.binder, card_name="Command Tower", condition="EX", foil=False, quantity=1,
+        )
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(
+            "/api/binders/mine/cards/bulk-delete/",
+            {"ids": [self.card.id, second.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["deleted"], 2)
+        self.assertFalse(BinderCard.objects.filter(pk__in=[self.card.id, second.id]).exists())
+        self.assertTrue(BinderCard.objects.filter(pk=third.id).exists())
+
+    def test_bulk_delete_cannot_remove_another_players_card(self):
+        other_binder = Binder.objects.create(owner=self.other, title="Otra carpeta", public=True)
+        foreign_card = BinderCard.objects.create(
+            binder=other_binder, card_name="Counterspell", condition="NM", foil=False, quantity=1,
+        )
+        self.client.force_authenticate(user=self.owner)
+        response = self.client.post(
+            "/api/binders/mine/cards/bulk-delete/",
+            {"ids": [self.card.id, foreign_card.id]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertTrue(BinderCard.objects.filter(pk=self.card.id).exists())
+        self.assertTrue(BinderCard.objects.filter(pk=foreign_card.id).exists())
+
 
 class ContactDeletePermissionTest(TestCase):
     def setUp(self):

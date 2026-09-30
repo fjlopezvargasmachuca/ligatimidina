@@ -1471,7 +1471,18 @@ body {
 .binder-card-image { position:relative; aspect-ratio: 488 / 680; background:#191b22; overflow:hidden; }
 .binder-card-image img { width:100%; height:100%; object-fit:cover; display:block; }
 .binder-card-image > span { height:100%; display:grid; place-items:center; color:#b7bac4; font-size:10px; }
-.foil-badge { position:absolute; right:7px; top:7px; padding:4px 7px; border-radius:999px; background:linear-gradient(135deg,#f0abfc,#67e8f9,#fde68a); color:#312e81; font-size:8px; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+.foil-badge { position:absolute; left:50%; bottom:7px; transform:translateX(-50%); padding:4px 8px; border-radius:999px; background:linear-gradient(135deg,#f0abfc,#67e8f9,#fde68a); color:#312e81; font-size:8px; letter-spacing:.04em; box-shadow:0 2px 8px rgba(0,0,0,.2); }
+.binder-card.selected { border-color:#8b5cf6; box-shadow:0 0 0 2px rgba(124,58,237,.12), 0 6px 14px rgba(26,28,38,.06); }
+.binder-bulk-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 12px; padding:9px 11px; border:1px solid #e5e1f2; border-radius:10px; background:#faf8ff; }
+.binder-bulk-toolbar label,.binder-select-card { display:flex; align-items:center; gap:6px; color:#555a68; font-size:9px; font-weight:800; cursor:pointer; }
+.binder-bulk-toolbar input,.binder-select-card input { width:14px; height:14px; accent-color:#7c3aed; cursor:pointer; }
+.binder-bulk-toolbar > span { margin-left:auto; color:#777c89; font-size:9px; font-weight:800; }
+.binder-bulk-toolbar .app-button { padding:7px 10px; font-size:9px; }
+.binder-select-card { margin-top:3px; padding:6px 7px; border:1px solid #ebe8f4; border-radius:8px; background:#faf9fd; }
+.binder-card-form-title { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.binder-card-form-title h3 { margin:0; }
+.binder-card-form-title span { padding:4px 7px; border-radius:999px; background:#f3f0ff; color:#6d28d9; font-size:9px; font-weight:900; }
+.binder-limit-note { padding:8px 9px; border-radius:8px; background:#fff7ed; color:#9a3412; font-size:9px; line-height:1.45; }
 .binder-card-info { display:grid; gap:4px; padding:9px; }
 .binder-card-info > strong { font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .binder-card-info > span { color:#777c89; font-size:9px; }
