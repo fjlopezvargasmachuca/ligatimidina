@@ -421,11 +421,12 @@ function RegisterForm({ onBack, cookiesAllowed }) {
           <div className="league-rules-box">
             <strong>Normas básicas de la Liga Timidina</strong>
             <ul>
-              <li>Respeta a jugadores, organización, administración y personal de la tienda, dentro y fuera del espacio de juego cuando el incidente esté relacionado con la liga.</li>
-              <li>No se toleran amenazas, acoso, insultos, discriminación, trampas, suplantación, manipulación de resultados ni uso abusivo de la aplicación.</li>
-              <li>Las discrepancias de partida se resuelven con calma y se trasladan a administración; no se utilizará la aplicación para hostigar a otros jugadores.</li>
-              <li>Las partidas de liga se plantean como Commander Bracket 3 (Upgraded): hasta 3 Game Changers, sin negación masiva de tierras ni combos intencionados de dos cartas que cierren la partida de forma temprana.</li>
-              <li>Las infracciones pueden implicar advertencias, suspensión o expulsión de la liga y de sus servicios. Los incidentes graves podrán comunicarse a la tienda y, cuando corresponda, a las autoridades competentes.</li>
+              <li>Horario oficial de liga: <strong>martes, jueves y viernes</strong>, en turno de <strong>mañana a las 11:30</strong> y <strong>tarde a las 18:30</strong>.</li>
+              <li>La liga se juega con intención de <strong>Commander Bracket 3 · Upgraded</strong>: hasta 3 Game Changers, sin negación masiva de tierras y sin combos intencionados de dos cartas que cierren la partida durante el early game.</li>
+              <li><strong>No se permiten proxies</strong> de ningún tipo en las partidas de liga.</li>
+              <li>Todo mazo debe <strong>registrarse previamente</strong> antes de poder utilizarse. Jugar cartas que no aparezcan en el listado registrado se considerará trampa y podrá conllevar sanciones.</li>
+              <li>Respeta a jugadores, organización, administración y personal de la tienda. No se toleran amenazas, acoso, insultos, discriminación, trampas, suplantación, manipulación de resultados ni uso abusivo de la aplicación.</li>
+              <li>Las discrepancias se resuelven con calma y se trasladan a administración. Las infracciones pueden implicar advertencias, suspensión o expulsión de la liga y de sus servicios.</li>
               <li>El nombre y apellidos se solicitan para identificar correctamente a participantes y gestionar incidencias. No se muestran en el perfil público.</li>
             </ul>
             <label className="rules-accept">
@@ -853,8 +854,9 @@ function PrizePoolCard({ pool }) {
 
 function FreeLeagueNotice({ settings }) {
   return <section className="league-card free-league-card">
-    <div className="section-title"><span>Liga gratuita</span><h2>Hasta 3 partidas por jornada</h2></div>
+    <div className="section-title"><span>Participación en la liga</span><h2>Hasta 3 partidas por jornada</h2></div>
     <p>{settings?.free_league_notice}</p>
+    <p><strong>Horario habitual:</strong> martes, jueves y viernes a las 11:30 y a las 18:30.</p>
   </section>
 }
 
@@ -862,19 +864,21 @@ function MembershipCard({ user, settings }) {
   const premiumMode = settings?.mode === 'PREMIUM'
   if (!premiumMode) {
     return <section className="league-card membership-card">
-      <div className="section-title"><span>Modalidad</span><h2>Liga gratuita</h2></div>
+      <div className="section-title"><span>Tu participación</span><h2>Acceso a la liga</h2></div>
       <p>Todos los jugadores activos pueden disputar hasta <strong>3 partidas por jornada</strong>.</p>
-      <p className="membership-warning">{settings?.free_league_notice}</p>
+      <p><strong>Horario habitual:</strong> martes, jueves y viernes a las 11:30 y a las 18:30.</p>
+      <p className="membership-warning">El respeto es obligatorio con jugadores, administración, organización y personal de la tienda. Insultos, amenazas, acoso, trampas o faltas graves/reiteradas pueden implicar suspensión o expulsión de la liga.</p>
     </section>
   }
   const premium = Boolean(user?.subscription_active)
   return <section className="league-card membership-card">
-    <div className="section-title"><span>Tu modalidad</span><h2>{premium ? 'Premium' : 'Estándar'}</h2></div>
-    <p>{premium ? 'Puedes disputar hasta 3 partidas por jornada.' : 'La modalidad estándar permite 1 partida por jornada.'}</p>
-    <p><strong>Premium: {Number(settings?.subscription_fee || 10).toFixed(2)} € al mes.</strong> Permite hasta 3 partidas por jornada y contribuye al bote mensual de premios.</p>
-    <p className="membership-warning">El respeto es obligatorio en cualquier modalidad. Insultos, amenazas, acoso, trampas o faltas graves/reiteradas pueden implicar suspensión o expulsión de la liga aunque exista una suscripción abonada.</p>
-    <a className="app-button paypal-button" href={settings?.paypal_url || 'https://paypal.me/machukador/10'} target="_blank" rel="noreferrer">Pagar suscripción con PayPal ↗</a>
-    <small>La activación se valida desde administración. {user?.subscription_paid_until ? `Abonada hasta ${user.subscription_paid_until}.` : ''}</small>
+    <div className="section-title"><span>Tu perfil en la liga</span><h2>{premium ? 'Aportación validada' : 'Pendiente de validación'}</h2></div>
+    <p>{premium ? 'Puedes disputar hasta 3 partidas por jornada.' : 'Actualmente puedes disputar 1 partida por jornada. Si deseas ampliar tu participación, puedes realizar la aportación desde aquí.'}</p>
+    <p><strong>Aportación sugerida: {Number(settings?.subscription_fee || 10).toFixed(2)} € al mes.</strong> Ayuda a sostener la liga y el bote mensual de premios.</p>
+    <p><strong>Horario habitual:</strong> martes, jueves y viernes a las 11:30 y a las 18:30.</p>
+    <p className="membership-warning">El respeto es obligatorio con jugadores, administración, organización y personal de la tienda. Insultos, amenazas, acoso, trampas o faltas graves/reiteradas pueden implicar suspensión o expulsión de la liga.</p>
+    <a className="app-button paypal-button" href={settings?.paypal_url || 'https://paypal.me/machukador/10'} target="_blank" rel="noreferrer">Realizar aportación con PayPal ↗</a>
+    <small>La activación se valida desde administración. {user?.subscription_paid_until ? `Aportación validada hasta ${user.subscription_paid_until}.` : ''}</small>
   </section>
 }
 
@@ -1926,7 +1930,68 @@ function CookieConsent({ consent, onAccept, onReject }) {
 
 
 function LeagueRulesModal({ onClose }) {
-  return createPortal(<div className="profile-modal-backdrop" onMouseDown={onClose}><section className="profile-modal rules-modal" onMouseDown={(e) => e.stopPropagation()}><button className="profile-modal-close" type="button" onClick={onClose}>×</button><span className="event-modal-eyebrow">Normas permanentes</span><h2>Normas de la Liga Timidina · Commander Bracket 3</h2><div className="league-rules-full"><h3>Formato de juego</h3><ul><li>Commander multijugador: mazo de 100 cartas contando el comandante, identidad de color y singleton salvo tierras básicas o cartas que indiquen lo contrario.</li><li>Las mesas se plantean normalmente para 4 jugadores. Cada jugador empieza con 40 vidas; recibir 21 o más puntos de daño de combate del mismo comandante durante la partida hace perder la partida.</li><li>La liga se juega con intención de <strong>Bracket 3 · Upgraded</strong>: mazos mejorados, con buena sinergia y calidad de cartas, pero sin planteamiento cEDH.</li><li>Se permiten hasta <strong>3 Game Changers</strong>. No se permite negación masiva de tierras ni combos intencionados de dos cartas que cierren la partida de forma temprana. Los turnos extra no deben encadenarse ni formar bucles.</li><li>Antes de empezar, los jugadores deben comunicar de buena fe elementos relevantes del mazo que puedan cambiar las expectativas de la mesa.</li></ul><h3>Convivencia</h3><ul><li>El respeto es obligatorio con jugadores, administración, organización y personal de la tienda, tanto en liga gratuita como de pago.</li><li>No se toleran insultos, amenazas, acoso, discriminación, trampas, manipulación de resultados ni hostigamiento mediante la aplicación.</li><li>Las discrepancias se tratan con calma y se trasladan a administración. Las conductas graves o reiteradas pueden implicar suspensión o <strong>expulsión de la liga</strong>, aunque el participante tenga una suscripción abonada.</li></ul><p className="rules-source-note">Las reglas de construcción y la lista de Game Changers pueden actualizarse. Consulta también la referencia oficial de Commander de Magic.</p><a className="app-button ghost" href="https://magic.wizards.com/en/formats/commander" target="_blank" rel="noreferrer">Reglas oficiales de Commander ↗</a></div></section></div>, document.body)
+  return createPortal(
+    <div className="profile-modal-backdrop" onMouseDown={onClose}>
+      <section className="profile-modal rules-modal" onMouseDown={(e) => e.stopPropagation()}>
+        <button className="profile-modal-close" type="button" onClick={onClose}>×</button>
+        <span className="event-modal-eyebrow">Normas permanentes</span>
+        <h2>Normas de la Liga Timidina · Commander Bracket 3</h2>
+        <div className="league-rules-full">
+          <div className="rules-highlight-grid">
+            <article className="rules-highlight-card">
+              <h3>Horario oficial de liga</h3>
+              <p>Las partidas de la liga se jugarán en el siguiente horario:</p>
+              <p><strong>Martes, jueves y viernes</strong><br />Mañanas a las <strong>11:30</strong> · Tardes a las <strong>18:30</strong></p>
+            </article>
+            <article className="rules-highlight-card">
+              <h3>Recordatorios esenciales</h3>
+              <ul>
+                <li>No se permiten <strong>proxies</strong> de ningún tipo.</li>
+                <li>Todos los mazos deben <strong>registrarse previamente</strong> antes de su uso.</li>
+                <li>Usar una carta que no figure en el listado del mazo registrado se considerará <strong>trampa</strong> y tendrá sus respectivas consecuencias.</li>
+              </ul>
+            </article>
+          </div>
+
+          <h3>Formato de juego</h3>
+          <ul>
+            <li>Commander multijugador: mazo de 100 cartas contando el comandante, identidad de color y singleton salvo tierras básicas o cartas que indiquen lo contrario.</li>
+            <li>Las mesas se plantean normalmente para 4 jugadores. Cada jugador empieza con 40 vidas; recibir 21 o más puntos de daño de combate del mismo comandante durante la partida hace perder la partida.</li>
+            <li>La liga se juega con intención de <strong>Bracket 3 · Upgraded</strong>: mazos mejorados, con buena sinergia y calidad de cartas, pero sin planteamiento cEDH.</li>
+            <li>Se permiten hasta <strong>3 Game Changers</strong>. No se permite negación masiva de tierras ni combos intencionados de dos cartas que cierren la partida durante el early game. Los turnos extra no deben encadenarse ni formar bucles.</li>
+            <li>Antes de empezar, los jugadores deben comunicar de buena fe elementos relevantes del mazo que puedan cambiar las expectativas de la mesa.</li>
+          </ul>
+
+          <h3>Convivencia</h3>
+          <ul>
+            <li>El respeto es obligatorio con jugadores, administración, organización y personal de la tienda.</li>
+            <li>No se toleran insultos, amenazas, acoso, discriminación, trampas, manipulación de resultados ni hostigamiento mediante la aplicación.</li>
+            <li>Las discrepancias se tratan con calma y se trasladan a administración. Las conductas graves o reiteradas pueden implicar suspensión o <strong>expulsión de la liga</strong>.</li>
+          </ul>
+
+          <div className="rules-media-block">
+            <div className="rules-media-copy">
+              <h3>¿Tienes dudas sobre los brackets?</h3>
+              <p>Consulta esta guía visual para entender rápidamente las diferencias entre los brackets 1 a 5 y ubicar el nivel de mesa esperado antes de jugar.</p>
+            </div>
+            <img className="rules-reference-image" src="/rules/commander-brackets-reference.png" alt="Guía visual de Commander Brackets del 1 al 5 para comparar Exhibition, Core, Upgraded, Optimized y cEDH." />
+          </div>
+
+          <div className="rules-media-block">
+            <div className="rules-media-copy">
+              <h3>Resumen visual de las normas Bracket 3 de la liga</h3>
+              <p>Hemos preparado un resumen propio, inspirado en la estructura visual de una chuleta rápida, para dejar claras las excepciones y restricciones que se aplicarán en Liga Timidina.</p>
+            </div>
+            <img className="rules-reference-image" src="/rules/bracket3-liga-timidina.svg" alt="Resumen visual propio de Liga Timidina con las reglas básicas de construcción y juego para Commander Bracket 3." />
+          </div>
+
+          <p className="rules-source-note">Las reglas de construcción y la lista de Game Changers pueden actualizarse. Consulta también la referencia oficial de Commander de Magic si necesitas ampliar información.</p>
+          <a className="app-button ghost" href="https://magic.wizards.com/en/formats/commander" target="_blank" rel="noreferrer">Reglas oficiales de Commander ↗</a>
+        </div>
+      </section>
+    </div>,
+    document.body,
+  )
 }
 
 function AppFooter() {

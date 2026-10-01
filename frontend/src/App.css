@@ -1437,11 +1437,21 @@ body {
   margin-left: 8px; padding: 0; border: 0; background: transparent;
   color:#6d28d9; font:inherit; font-weight:900; text-decoration:underline; cursor:pointer;
 }
-.rules-modal { width:min(820px,100%); }
+.rules-modal { width:min(980px,100%); }
 .league-rules-full { color:#4f5563; font-size:12px; line-height:1.6; }
 .league-rules-full h3 { margin:18px 0 7px; color:#181b25; font-size:14px; }
 .league-rules-full ul { display:grid; gap:7px; padding-left:20px; }
-.rules-source-note { padding:11px 13px; border-radius:11px; background:#f5f3ff; color:#5b21b6; }
+.rules-highlight-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:8px 0 12px; }
+.rules-highlight-card { padding:14px; border:1px solid #e7e1f5; border-radius:14px; background:linear-gradient(180deg,#fbfaff,#f7f4ff); }
+.rules-highlight-card h3 { margin-top:0; }
+.rules-highlight-card p { margin:0 0 7px; }
+.rules-media-block { margin-top:16px; padding:14px; border:1px solid #ebe7f6; border-radius:16px; background:#fff; }
+.rules-media-copy p { margin:4px 0 0; }
+.rules-reference-image { display:block; width:100%; margin-top:12px; border-radius:14px; border:1px solid #ddd6fe; background:#fff; }
+.rules-source-note { margin-top:16px; padding:11px 13px; border-radius:11px; background:#f5f3ff; color:#5b21b6; }
+@media (max-width: 760px) {
+  .rules-highlight-grid { grid-template-columns:1fr; }
+}
 
 .contact-thread-badges { display:flex; align-items:center; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
 .contact-collapse { border:0; background:#f3f0ff; color:#6d28d9; border-radius:999px; padding:5px 9px; font-size:9px; font-weight:900; cursor:pointer; }
