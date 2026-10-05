@@ -14,10 +14,12 @@ from .views import (
     HandicapListAPIView,
     MatchPlayerHandicapUsageAPIView,
     MyHandicapGrantListAPIView,
+    NoTeFlipesMilestoneListAPIView,
     PlayerHandicapListAPIView,
 )
 
 urlpatterns = [
+    path("milestones/", NoTeFlipesMilestoneListAPIView.as_view(), name="no-te-flipes-milestone-list"),
     path("categories/", HandicapCategoryConfigListAPIView.as_view(), name="handicap-category-list"),
     path("categories/<int:pk>/", HandicapCategoryConfigDetailAPIView.as_view(), name="handicap-category-detail"),
     path("definitions/", HandicapDefinitionListAPIView.as_view(), name="handicap-definition-list"),

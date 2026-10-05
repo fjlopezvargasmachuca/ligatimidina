@@ -1072,10 +1072,16 @@ function AdminDashboard({ currentUser }) {
 
   function handleUserFieldChange(event) {
     const { name, value, type, checked } = event.target
-    setUserForm((current) => ({
-      ...current,
-      [name]: type === 'checkbox' ? checked : value,
-    }))
+    setUserForm((current) => {
+      const next = {
+        ...current,
+        [name]: type === 'checkbox' ? checked : value,
+      }
+      if (name === 'membership_plan' && value !== 'SUPPORTER') {
+        next.subscription_paid_until = ''
+      }
+      return next
+    })
   }
 
   function resetUserForm() {
@@ -1143,7 +1149,12 @@ function AdminDashboard({ currentUser }) {
 
         showSuccess('Usuario actualizado correctamente.')
       } else {
-        await api.post('/accounts/admin/players/', userForm)
+        await api.post('/accounts/admin/players/', {
+          ...userForm,
+          subscription_paid_until: userForm.membership_plan === 'SUPPORTER'
+            ? (userForm.subscription_paid_until || null)
+            : null,
+        })
         showSuccess('Usuario creado correctamente.')
       }
 
@@ -1979,10 +1990,13 @@ function UsersSection({
                 </select>
               </label>
 
-              <label>
-                Suscripción abonada hasta
-                <input name="subscription_paid_until" type="date" value={form.subscription_paid_until || ''} onChange={onFieldChange} disabled={leagueSettings?.mode === 'FREE'} />
-              </label>
+              {leagueSettings?.mode !== 'FREE' && form.membership_plan === 'SUPPORTER' && (
+                <label>
+                  Suscripción abonada hasta (opcional)
+                  <input name="subscription_paid_until" type="date" value={form.subscription_paid_until || ''} onChange={onFieldChange} />
+                  <small>Si se deja vacía, la aportación se considera vigente hasta que administración la cambie. Si la fecha vence, el usuario vuelve automáticamente a las condiciones gratuitas/estándar; la cuenta sigue activa.</small>
+                </label>
+              )}
             </div>
 
             {editingSelf && (
@@ -2046,7 +2060,7 @@ function UsersSection({
                           <strong>{player.display_name || player.username}</strong>
                           <small>@{player.username}{isSelf ? ' · tú' : ''}</small>
                         </td>
-                        <td>{player.email || '—'}<small>{leagueSettings?.mode === 'FREE' ? 'Liga gratuita' : player.membership_plan === 'SUPPORTER' ? `Premium${player.subscription_paid_until ? ` hasta ${player.subscription_paid_until}` : ''}` : 'Estándar'}</small></td>
+                        <td>{player.email || '—'}<small>{leagueSettings?.mode === 'FREE' ? 'Participación activa' : player.subscription_active ? `Aportación vigente${player.subscription_paid_until ? ` hasta ${player.subscription_paid_until}` : ''}` : 'Condiciones gratuitas/estándar'}</small></td>
                         <td>
                           {player.is_superuser ? (
                             <StatusBadge tone="warning">Superadmin</StatusBadge>

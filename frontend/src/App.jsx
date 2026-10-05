@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from './api/client'
 import AdminDashboard from './AdminDashboard'
@@ -111,7 +111,7 @@ function enrichAdminStandings(standings, handicaps, grants) {
   })
 }
 
-function LoginForm({ onAuthenticated, cookiesAllowed }) {
+function LoginForm({ onAuthenticated, cookiesAllowed, notice = '', checkingSession = false }) {
   const [form, setForm] = useState({
     username: '',
     password: '',
@@ -167,6 +167,13 @@ function LoginForm({ onAuthenticated, cookiesAllowed }) {
             Accede para consultar tu liga y gestionar tus mazos.
           </p>
         </div>
+
+        {notice && (
+          <div className="app-alert success">{notice}</div>
+        )}
+        {checkingSession && (
+          <div className="auth-background-status">Comprobando una sesión anterior en segundo plano…</div>
+        )}
 
         {error && (
           <div className="app-alert error">{error}</div>
@@ -224,7 +231,7 @@ function LoginForm({ onAuthenticated, cookiesAllowed }) {
   )
 }
 
-function RegisterForm({ onBack, cookiesAllowed }) {
+function RegisterForm({ onBack, onRegistered, cookiesAllowed }) {
   const [form, setForm] = useState({
     username: '',
     first_name: '',
@@ -255,7 +262,9 @@ function RegisterForm({ onBack, cookiesAllowed }) {
         '/accounts/register/',
         form,
       )
-      setSuccess(result?.detail || 'Cuenta creada. Debe validarla un administrador antes de poder acceder.')
+      const message = result?.detail || 'Cuenta creada. Debe validarla un administrador antes de poder acceder.'
+      setSuccess(message)
+      onRegistered?.(message)
     } catch (requestError) {
       const data = requestError.data
 
@@ -883,6 +892,41 @@ function MembershipCard({ user, settings }) {
 }
 
 
+function NoTeFlipesMilestonesCard() {
+  const [milestones, setMilestones] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    api.get('/handicaps/milestones/')
+      .then((response) => {
+        if (!cancelled) setMilestones(asArray(response))
+      })
+      .catch(() => {
+        if (!cancelled) setMilestones([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  return <section className="league-card milestone-card">
+    <div className="section-title"><span>Hitos de la liga</span><h2>¿Cómo conseguir un “No te flipes”?</h2></div>
+    <p className="milestone-intro">Estos hitos sirven como referencia para que administración pueda conceder un poder “No te flipes” por jugadas especialmente memorables. La concesión final corresponde a administración.</p>
+    {loading ? <div className="empty-message">Cargando hitos…</div> : milestones.length ? (
+      <ol className="milestone-list">
+        {milestones.map((milestone) => <li key={milestone.id}>
+          <strong>{milestone.name}</strong>
+          <span>{milestone.description}</span>
+          {milestone.example && <small>{milestone.example}</small>}
+        </li>)}
+      </ol>
+    ) : <div className="empty-message">Todavía no hay hitos configurados.</div>}
+  </section>
+}
+
+
 function LeagueView({ user }) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1040,6 +1084,7 @@ function LeagueView({ user }) {
 
         <aside className="league-sidebar">
           <NoTeFlipesCard currentUserId={user?.id} />
+          <NoTeFlipesMilestonesCard />
         </aside>
       </div>
       {selectedPlayer && <PlayerProfileModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />}
@@ -2009,32 +2054,37 @@ function AppFooter() {
 function App() {
   const [user, setUser] = useState(null)
   const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem(COOKIE_CONSENT_KEY))
-  const [loading, setLoading] = useState(cookieConsent === 'accepted')
+  const [checkingSession, setCheckingSession] = useState(false)
   const [authMode, setAuthMode] = useState('login')
+  const [authNotice, setAuthNotice] = useState('')
   const [activeView, setActiveView] = useState('league')
+  const manualAuthRef = useRef(false)
 
   useEffect(() => {
     if (cookieConsent !== 'accepted') {
-      setLoading(false)
+      setCheckingSession(false)
       setUser(null)
-      return
-    }
-    setLoading(true)
-    async function loadCurrentUser() {
-      try {
-        const currentUser = await api.get(
-          '/accounts/me/',
-        )
-
-        setUser(currentUser)
-      } catch {
-        setUser(null)
-      } finally {
-        setLoading(false)
-      }
+      return undefined
     }
 
-    loadCurrentUser()
+    let cancelled = false
+    manualAuthRef.current = false
+    setCheckingSession(true)
+
+    // Se comprueba la sesión en segundo plano. La pantalla de login se pinta
+    // inmediatamente para que el usuario pueda escribir mientras Render despierta.
+    api.get('/accounts/me/')
+      .then((currentUser) => {
+        if (!cancelled && !manualAuthRef.current) setUser(currentUser)
+      })
+      .catch(() => {
+        if (!cancelled && !manualAuthRef.current) setUser(null)
+      })
+      .finally(() => {
+        if (!cancelled) setCheckingSession(false)
+      })
+
+    return () => { cancelled = true }
   }, [cookieConsent])
 
   function acceptCookies() {
@@ -2059,6 +2109,8 @@ function App() {
   }
 
   function handleAuthenticated(authenticatedUser) {
+    manualAuthRef.current = true
+    setAuthNotice('')
     setUser(authenticatedUser)
 
     setActiveView(
@@ -2068,20 +2120,18 @@ function App() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="app-loading-screen">
-        <div className="app-loading-mark">LT</div>
-        <span>Cargando Liga Timidina…</span>
-      </div>
-    )
-  }
-
   if (!user) {
     if (authMode === 'register') {
       return (
         <>
-          <RegisterForm onAuthenticated={handleAuthenticated} onBack={() => setAuthMode('login')} cookiesAllowed={cookieConsent === 'accepted'} />
+          <RegisterForm
+            onBack={() => setAuthMode('login')}
+            onRegistered={(message) => {
+              setAuthNotice(message)
+              setAuthMode('login')
+            }}
+            cookiesAllowed={cookieConsent === 'accepted'}
+          />
           <AppFooter />
           <CookieConsent consent={cookieConsent} onAccept={acceptCookies} onReject={rejectCookies} />
         </>
@@ -2093,11 +2143,13 @@ function App() {
         <LoginForm
           onAuthenticated={handleAuthenticated}
           cookiesAllowed={cookieConsent === 'accepted'}
+          notice={authNotice}
+          checkingSession={checkingSession}
         />
 
         <button
           className="auth-register-link"
-          onClick={() => setAuthMode('register')}
+          onClick={() => { setAuthNotice(''); setAuthMode('register') }}
         >
           ¿Todavía no tienes cuenta? Crear cuenta
         </button>

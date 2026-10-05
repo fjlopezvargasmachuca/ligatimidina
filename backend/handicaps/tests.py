@@ -534,3 +534,34 @@ class HandicapGrantAPITest(TestCase):
         self.assertFalse(Handicap.objects.exists())
 
 
+
+
+class NoTeFlipesMilestoneAPITest(TestCase):
+    def test_authenticated_player_can_read_active_milestones(self):
+        from .models import NoTeFlipesMilestone
+
+        player = Player.objects.create_user(
+            username="milestone-player",
+            password="test1234",
+            display_name="Milestone Player",
+        )
+        NoTeFlipesMilestone.objects.create(
+            name="Golpe de prueba",
+            description="Hacer una jugada extraordinaria.",
+            example="Ejemplo de prueba.",
+            active=True,
+            sort_order=1,
+        )
+        NoTeFlipesMilestone.objects.create(
+            name="Oculto",
+            description="No debe mostrarse.",
+            active=False,
+            sort_order=2,
+        )
+        client = APIClient()
+        client.force_authenticate(player)
+        response = client.get("/api/handicaps/milestones/")
+        self.assertEqual(response.status_code, 200)
+        names = [row["name"] for row in response.data]
+        self.assertIn("Golpe de prueba", names)
+        self.assertNotIn("Oculto", names)

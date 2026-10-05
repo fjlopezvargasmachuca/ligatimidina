@@ -6,6 +6,7 @@ from .models import (
     HandicapDefinition,
     HandicapUsage,
     HandicapGrant,
+    NoTeFlipesMilestone,
 )
 
 
@@ -77,3 +78,10 @@ class HandicapGrantAdmin(admin.ModelAdmin):
         "target_player__display_name",
         "award_reason",
     )
+
+
+@admin.register(NoTeFlipesMilestone)
+class NoTeFlipesMilestoneAdmin(admin.ModelAdmin):
+    list_display = ("name", "sort_order", "active", "updated_at")
+    list_editable = ("sort_order", "active")
+    search_fields = ("name", "description", "example")

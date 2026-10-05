@@ -636,3 +636,62 @@ class AdminPlayerManagementAPITest(APITestCase):
         self.assertFalse(other_admin.is_staff)
         self.assertFalse(other_admin.is_active)
 
+
+
+class AdminMembershipDateAPITest(APITestCase):
+    def setUp(self):
+        self.admin = Player.objects.create_user(
+            username="membership-admin",
+            password="test1234",
+            display_name="Admin",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_authenticate(self.admin)
+
+    def test_admin_can_create_free_user_without_subscription_date(self):
+        response = self.client.post(
+            "/api/accounts/admin/players/",
+            {
+                "username": "free-created",
+                "first_name": "Free",
+                "last_name": "Player",
+                "display_name": "Free Player",
+                "email": "free-created@example.com",
+                "password": "LigaTimidina123!",
+                "password_confirm": "LigaTimidina123!",
+                "is_active": True,
+                "is_staff": False,
+                "membership_plan": "FREE",
+                "subscription_paid_until": "",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        player = Player.objects.get(username="free-created")
+        self.assertIsNone(player.subscription_paid_until)
+        self.assertTrue(player.is_active)
+
+    def test_switching_to_free_clears_paid_until_without_deactivating(self):
+        player = Player.objects.create_user(
+            username="expired-supporter",
+            password="test1234",
+            display_name="Expired",
+            email="expired@example.com",
+            membership_plan=Player.MembershipPlan.SUPPORTER,
+            subscription_paid_until="2026-01-01",
+            is_active=True,
+        )
+        response = self.client.patch(
+            f"/api/accounts/admin/players/{player.id}/",
+            {
+                "membership_plan": "FREE",
+                "subscription_paid_until": "",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        player.refresh_from_db()
+        self.assertEqual(player.membership_plan, Player.MembershipPlan.FREE)
+        self.assertIsNone(player.subscription_paid_until)
+        self.assertTrue(player.is_active)

@@ -30,8 +30,10 @@ class Player(AbstractUser):
 
     def has_active_subscription(self, on_date=None):
         on_date = on_date or timezone.localdate()
-        # Una cuenta marcada como Premium sin fecha de fin se considera
-        # una suscripción indefinida hasta que administración la cambie.
+        # La fecha solo afecta a la modalidad de pago. Una fecha vencida
+        # devuelve al jugador a las condiciones gratuitas/estándar, pero nunca
+        # desactiva su cuenta. Sin fecha se considera vigente hasta que
+        # administración cambie la modalidad.
         return (
             self.membership_plan == self.MembershipPlan.SUPPORTER
             and (

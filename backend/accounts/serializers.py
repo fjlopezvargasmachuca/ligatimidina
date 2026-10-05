@@ -9,6 +9,15 @@ from rest_framework import serializers
 from .models import ContactMessage, ContactReply, Player
 
 
+class OptionalDateField(serializers.DateField):
+    """Acepta fecha ISO, null o cadena vacia como ausencia de fecha."""
+
+    def to_internal_value(self, value):
+        if value in ("", None):
+            return None
+        return super().to_internal_value(value)
+
+
 class PlayerSerializer(serializers.ModelSerializer):
     subscription_active = serializers.SerializerMethodField()
     weekly_match_limit = serializers.SerializerMethodField()
@@ -163,6 +172,7 @@ class AdminPlayerSerializer(serializers.ModelSerializer):
 class AdminPlayerCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8, trim_whitespace=False)
     password_confirm = serializers.CharField(write_only=True, trim_whitespace=False)
+    subscription_paid_until = OptionalDateField(required=False, allow_null=True)
 
     class Meta:
         model = Player
@@ -179,6 +189,8 @@ class AdminPlayerCreateSerializer(serializers.ModelSerializer):
         if Player.objects.filter(email__iexact=email).exists():
             raise serializers.ValidationError({"email": "Ya existe una cuenta con este email."})
         attrs["email"] = email
+        if attrs.get("membership_plan", Player.MembershipPlan.FREE) != Player.MembershipPlan.SUPPORTER:
+            attrs["subscription_paid_until"] = None
         if attrs["password"] != attrs["password_confirm"]:
             raise serializers.ValidationError({"password_confirm": "Las contraseñas no coinciden."})
         candidate = Player(username=attrs.get("username", ""), display_name=attrs.get("display_name", ""), email=email)
@@ -193,6 +205,7 @@ class AdminPlayerCreateSerializer(serializers.ModelSerializer):
 
 class AdminPlayerUpdateSerializer(serializers.ModelSerializer):
     display_name = serializers.CharField(min_length=1, max_length=100, allow_blank=False, trim_whitespace=True)
+    subscription_paid_until = OptionalDateField(required=False, allow_null=True)
 
     class Meta:
         model = Player
@@ -226,6 +239,11 @@ class AdminPlayerUpdateSerializer(serializers.ModelSerializer):
                     )
             if "is_staff" in attrs and attrs["is_staff"] != self.instance.is_staff and not request.user.is_superuser:
                 raise serializers.ValidationError({"is_staff": "Solo un superadministrador puede conceder o retirar permisos de administración."})
+
+        effective_plan = attrs.get("membership_plan", getattr(self.instance, "membership_plan", Player.MembershipPlan.FREE))
+        if effective_plan != Player.MembershipPlan.SUPPORTER:
+            attrs["subscription_paid_until"] = None
+
         return attrs
 
 

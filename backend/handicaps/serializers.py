@@ -2,8 +2,17 @@ from rest_framework import serializers
 
 from accounts.models import Player
 
-from .models import Handicap, HandicapCategoryConfig, HandicapDefinition, HandicapGrant
+from .models import Handicap, HandicapCategoryConfig, HandicapDefinition, HandicapGrant, NoTeFlipesMilestone
 from .services import HandicapService
+
+
+class NoTeFlipesMilestoneSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NoTeFlipesMilestone
+        fields = [
+            "id", "name", "description", "example", "active", "sort_order",
+        ]
+        read_only_fields = ["id"]
 
 
 class HandicapCategoryConfigSerializer(serializers.ModelSerializer):

@@ -10,7 +10,7 @@ from accounts.models import Player
 from league.models import Season
 from matches.models import Match, MatchPlayer
 
-from .models import Handicap, HandicapCategoryConfig, HandicapDefinition, HandicapGrant
+from .models import Handicap, HandicapCategoryConfig, HandicapDefinition, HandicapGrant, NoTeFlipesMilestone
 from .permissions import IsAdminUserOrReadOnly
 from .serializers import (
     HandicapAdminUpdateSerializer,
@@ -23,8 +23,17 @@ from .serializers import (
     HandicapRevealSerializer,
     HandicapSerializer,
     MyHandicapGrantSerializer,
+    NoTeFlipesMilestoneSerializer,
 )
 from .services import HandicapService
+
+
+class NoTeFlipesMilestoneListAPIView(ListAPIView):
+    serializer_class = NoTeFlipesMilestoneSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return NoTeFlipesMilestone.objects.filter(active=True).order_by("sort_order", "id")
 
 
 class HandicapCategoryConfigListAPIView(ListAPIView):

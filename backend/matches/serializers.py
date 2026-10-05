@@ -8,6 +8,26 @@ from handicaps.services import HandicapService
 from .models import Elimination, Match, MatchPlayer
 
 
+def _lock_and_validate_weekly_event_bonus(*, match, player, exclude_pk=None):
+    """Serializa la concesión del bonus para evitar dobles premios concurrentes."""
+    week_model = type(match.league_week)
+    week_model.objects.select_for_update().get(pk=match.league_week_id)
+    queryset = MatchPlayer.objects.filter(
+        player=player,
+        match__league_week_id=match.league_week_id,
+        participates_in_weekly_event=True,
+    )
+    if exclude_pk is not None:
+        queryset = queryset.exclude(pk=exclude_pk)
+    if queryset.exists():
+        raise serializers.ValidationError({
+            "participates_in_weekly_event": (
+                "La bonificación del evento semanal solo puede concederse una vez "
+                "por jugador y jornada."
+            )
+        })
+
+
 class MatchPlayerSerializer(serializers.ModelSerializer):
     player_name = serializers.CharField(
         source="player.display_name",
@@ -163,6 +183,16 @@ class MatchPlayerUpdateSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         handicap = validated_data.pop("_used_handicap", serializers.empty)
+        participates = validated_data.get(
+            "participates_in_weekly_event",
+            instance.participates_in_weekly_event,
+        )
+        if participates:
+            _lock_and_validate_weekly_event_bonus(
+                match=self.context["match"],
+                player=instance.player,
+                exclude_pk=instance.pk,
+            )
         instance = super().update(instance, validated_data)
 
         if handicap is not serializers.empty:
@@ -457,6 +487,11 @@ class MatchPlayerCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         match = self.context["match"]
         handicap = validated_data.pop("_used_handicap", serializers.empty)
+        if validated_data.get("participates_in_weekly_event", False):
+            _lock_and_validate_weekly_event_bonus(
+                match=match,
+                player=validated_data["player"],
+            )
         instance = MatchPlayer.objects.create(
             match=match,
             **validated_data,

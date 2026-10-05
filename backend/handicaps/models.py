@@ -231,3 +231,23 @@ class HandicapUsage(models.Model):
 
     def __str__(self):
         return f"{self.handicap} usado en {self.match_player}"
+
+
+class NoTeFlipesMilestone(models.Model):
+    """Hito visible que puede justificar la concesión de un poder No te flipes."""
+
+    name = models.CharField(max_length=140, verbose_name="Hito")
+    description = models.TextField(verbose_name="Descripción")
+    example = models.CharField(max_length=220, blank=True, verbose_name="Ejemplo / aclaración")
+    active = models.BooleanField(default=True, verbose_name="Visible")
+    sort_order = models.PositiveIntegerField(default=0, verbose_name="Orden")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Fecha de creación")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Última modificación")
+
+    class Meta:
+        ordering = ["sort_order", "id"]
+        verbose_name = "Hito para No te flipes"
+        verbose_name_plural = "Hitos para No te flipes"
+
+    def __str__(self):
+        return self.name

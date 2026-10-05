@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'config.middleware.RequestActivityLogMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -257,4 +258,41 @@ SECURE_CSP = {
     "object-src": [CSP.NONE],
     "base-uri": [CSP.SELF],
     "form-action": [CSP.SELF],
+}
+
+
+# Registro de actividad HTTP. El fichero se escribe en tiempo real y rota para
+# evitar crecimiento ilimitado. En Render el disco del servicio es efimero,
+# por lo que se conserva tambien la salida por consola.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "activity": {
+            "format": "{asctime} {levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "activity_file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": BASE_DIR / "log.txt",
+            "maxBytes": 5 * 1024 * 1024,
+            "backupCount": 3,
+            "encoding": "utf-8",
+            "delay": True,
+            "formatter": "activity",
+        },
+        "activity_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "activity",
+        },
+    },
+    "loggers": {
+        "liga.activity": {
+            "handlers": ["activity_file", "activity_console"],
+            "level": os.getenv("LIGA_ACTIVITY_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+    },
 }
