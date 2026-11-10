@@ -1,473 +1,638 @@
-# BracketMTG
-
-**BracketMTG** es una aplicación web para analizar mazos de **Magic: The Gathering – Commander**. Permite pegar una lista de cartas, seleccionar el comandante y obtener una estimación del bracket, condiciones de victoria, curva de maná, precios, interacción, motores del mazo, combos y recomendaciones.
-
-La aplicación acepta nombres de cartas tanto en **español como en inglés** y normaliza internamente las cartas al nombre Oracle en inglés antes de realizar el análisis.
-
-🌐 **Aplicación:** https://www.bracketmtg.com/
-
+Liga Timidina
+Aplicación web para gestionar una liga semanal de Magic: The Gathering · Commander, con temporadas, jornadas, clasificación, mazos, eventos especiales, administración de partidas y un sistema propio de poderes/penalizaciones denominado “No te flipes”.
+El proyecto está dividido en un backend Django + Django REST Framework y un frontend React + Vite.
 ---
-
-## Funcionalidades
-
-### Análisis rápido
-
-Pensado para obtener una respuesta inmediata antes de una partida:
-
-- Estimación del bracket del mazo.
-- Detección del plan de juego.
-- Condiciones de victoria.
-- Detección básica de combos.
-- Normalización automática de nombres de cartas.
-
-### Análisis completo
-
-Incluye el análisis rápido y añade:
-
-- Curva de maná.
-- CMC / valor de maná medio.
-- Número de tierras.
-- Ramp.
-- Robo de cartas.
-- Tutores.
-- Interacción.
-- Motores del mazo.
-- Combos detectados.
-- Game Changers.
-- Legalidad e identidad de color.
-- Recomendaciones basadas en EDHREC.
-- Precio individual de las cartas.
-- Precio total aproximado del mazo.
-- Cobertura de precios disponibles en Scryfall.
-- Diagnóstico general de construcción.
-
+Estado del proyecto
+Liga Timidina se encuentra en desarrollo activo.
+La aplicación ya dispone de las funciones principales de gestión de liga y está preparada para ejecutarse tanto en local como mediante un despliegue separado:
+Frontend: Vercel
+Backend/API: Render
+Base de datos: PostgreSQL
+Entorno local: PostgreSQL o SQLite para desarrollo
+URL de la aplicación desplegada:
+`https://ligatimidina.vercel.app`
+Backend de pruebas:
+`https://ligatimidina.onrender.com`
+Comprobación de salud del backend:
+`https://ligatimidina.onrender.com/health/`
 ---
-
-## Cartas en español e inglés
-
-BracketMTG permite utilizar listas mezcladas en ambos idiomas.
-
-Por ejemplo:
-
-```text
-1 Anillo solar
-1 Arcane Signet
-1 Espadas en guadañas
-1 Island
-```
-
-Antes del análisis, las cartas reconocidas se convierten a su nombre Oracle en inglés:
-
-```text
-1 Sol Ring
-1 Arcane Signet
-1 Swords to Plowshares
-1 Island
-```
-
-La normalización también se aplica a:
-
-- Commander.
-- Partner / segundo Commander.
-- Background.
-- Companion.
-
-Los resultados y las exportaciones utilizan los nombres en inglés para mantener compatibilidad con Scryfall, EDHREC y el resto de fuentes utilizadas por el analizador.
-
+Funcionalidades principales
+Usuarios
+Registro mediante nombre de usuario y contraseña.
+Nombre y apellidos privados para administración.
+Nombre visible público.
+Avatar.
+Aceptación de las normas de la liga.
+Activación y validación administrativa de nuevas cuentas.
+Cambio de contraseña.
+Perfil público de jugadores.
+Roles de usuario, administrador y superadministrador.
+El superadministrador puede promover otros usuarios a administrador.
+Temporadas y jornadas
+Creación y gestión de temporadas.
+Fechas de inicio y fin.
+Generación de jornadas.
+Jornada actual.
+Cierre de jornadas.
+Histórico por temporada.
+Finalización de temporada manteniendo el histórico.
+Clasificación acumulada con:
+puntos;
+partidas;
+victorias;
+eliminaciones;
+semanas jugadas;
+estados especiales.
+Partidas
+Registro administrativo de partidas Commander.
+Asociación de jugadores y mazos.
+Posición inicial y final.
+Eliminaciones.
+Primera eliminación.
+Concesiones.
+Puntos extraordinarios con motivo obligatorio.
+Cierre de partida.
+Recalculo de puntuación.
+Protección frente a modificaciones de partidas cerradas.
+Eliminación histórica administrativa con reconstrucción de datos dependientes cuando sea necesario.
+Límite de partidas por jornada según la configuración de la liga.
+Eventos semanales
+Cada jornada puede disponer de un evento especial con:
+nombre;
+descripción;
+normas;
+puntuación adicional.
+La bonificación del evento semanal solo puede concederse una vez por jugador y jornada, aunque el jugador dispute varias partidas esa misma semana.
+Entre los tipos de evento admitidos se encuentran, por ejemplo:
+Planechase;
+Archenemy;
+2v2;
+manos abiertas;
+restricciones de ataque;
+cambios de vidas iniciales;
+Treasure inicial;
+tierras básicas adicionales;
+reglas de tiempo;
+otros modificadores definidos por administración.
+Mazos y DeckCheck
+Registro de mazos Commander.
+Comandante.
+Descripción.
+Lista de cartas.
+Marcado de mazo original.
+Estado activo/inactivo.
+Integración con información de DeckCheck.
+Visualización del bracket del mazo.
+Perfil público con los mazos del jugador.
+Referencia visual de los diferentes Commander Brackets.
+Normas específicas de Bracket 3 · Upgraded dentro de la aplicación.
+Carpetas de cartas
+Cada jugador puede disponer de una carpeta pública para enseñar cartas disponibles.
+Incluye:
+hasta 100 entradas de cartas por usuario;
+imagen de carta;
+cantidad;
+estado;
+FOIL;
+precio de referencia;
+enlace de referencia;
+selección múltiple;
+eliminación múltiple con confirmación;
+visualización pública de carpetas de otros jugadores.
+La Liga Timidina no actúa como intermediaria en pagos o compraventas realizadas entre jugadores.
+“No te flipes”
+“No te flipes” es un sistema especial de la liga.
+Un No te flipes es un poder, no una penalización asignada directamente.
+Flujo:
+Administración concede un poder a un jugador.
+El jugador ve que tiene el poder disponible.
+El titular elige a otro jugador como objetivo.
+El titular no puede elegirse a sí mismo.
+Al pulsar Lanzar, el backend selecciona aleatoriamente la penalización.
+La selección respeta los pesos configurados.
+La penalización se asigna al jugador objetivo.
+El poder queda consumido.
+La ruleta del frontend representa visualmente el resultado decidido por el backend.
+Antes del lanzamiento, el titular no conoce la penalización que contiene el poder.
+Después del lanzamiento puede conocer el resultado que acaba de enviar.
+El jugador afectado puede consultar su propia penalización y administración puede auditar todas.
+Handicaps y penalizaciones
+El sistema admite categorías configurables:
+leve;
+media;
+grave.
+Cada definición puede incluir:
+nombre;
+descripción;
+categoría;
+peso de aparición;
+partidas de gracia;
+puntos de penalización;
+parámetros de reversión;
+estado activo/inactivo.
+Los pesos permiten controlar la probabilidad relativa de aparición.
+El sistema conserva snapshots históricos para evitar que una modificación posterior de una definición cambie el significado de penalizaciones ya asignadas.
+Mensajería
+Conversaciones entre jugador y administración.
+Respuestas encadenadas.
+Estado leído/no leído.
+Apertura y cierre de conversaciones.
+Eliminación administrativa.
+Medidas anti-spam mediante throttling de API.
+Premios y configuración de liga
+La administración puede configurar:
+límite de partidas;
+aportaciones;
+porcentaje destinado al bote;
+enlace de pago;
+avisos de convivencia;
+reparto de premios.
+El reparto previsto del bote mensual es:
+1.º: 50 %
+2.º: 30 %
+3.º: 20 %
+Los premios se plantean en material relacionado con Magic: The Gathering proporcionado por la tienda colaboradora.
 ---
-
-## Reglas de conteo de Commander
-
-El analizador tiene en cuenta la zona de mando al validar las 100 cartas del mazo.
-
-Ejemplos válidos:
-
-```text
-99 cartas de biblioteca + 1 Commander = 100
-```
-
-```text
-98 cartas de biblioteca + 2 Commanders con Partner = 100
-```
-
-```text
-98 cartas de biblioteca + 1 Commander + 1 Background = 100
-```
-
-Si el Commander también aparece dentro de la lista pegada, BracketMTG detecta esa copia y evita contarla dos veces.
-
-> Un Companion no sustituye una carta de las 100 del mazo.
-
+Normas permanentes de la liga
+Horario
+Las partidas oficiales de Liga Timidina se juegan:
+Día	Mañana	Tarde
+Martes	11:30	18:30
+Jueves	11:30	18:30
+Viernes	11:30	18:30
+Mazos
+La liga se juega con intención de Commander Bracket 3 · Upgraded.
+El mazo debe estar registrado previamente antes de utilizarse.
+No se permiten proxies de ningún tipo.
+Utilizar una carta que no figure en la lista registrada del mazo se considera trampa y puede conllevar sanciones.
+Se permiten hasta 3 Game Changers dentro de las restricciones definidas para Bracket 3.
+No se permite negación masiva de tierras.
+No se permiten cierres mediante combos intencionados de dos cartas durante el early game en los supuestos restringidos por las normas de la liga.
+Los jugadores deben comunicar de buena fe los elementos relevantes del mazo que puedan modificar las expectativas de la mesa.
+Convivencia
+No se toleran:
+insultos;
+amenazas;
+acoso;
+discriminación;
+trampas;
+manipulación de resultados;
+suplantación;
+hostigamiento mediante la aplicación.
+Las conductas graves o reiteradas pueden implicar advertencias, suspensión o expulsión de la liga.
 ---
-
-## Exportación del mazo
-
-Después del análisis se puede descargar la lista como archivo `.txt`.
-
-La exportación separa la zona de mando de la biblioteca y utiliza nombres en inglés:
-
+Stack tecnológico
+Backend
+Python 3.13
+Django 6.1
+Django REST Framework
+PostgreSQL
+psycopg
+Gunicorn
+WhiteNoise
+dj-database-url
+Pillow
+Requests
+python-dotenv
+Frontend
+React 19
+Vite 8
+React Router
+JavaScript / JSX
+CSS
+Producción
+Vercel para el frontend.
+Render para Django/Gunicorn.
+PostgreSQL administrado para los datos.
+---
+Estructura del proyecto
 ```text
-Commander
-1 Aragorn, King of Gondor
-
-Deck
-1 Sol Ring
-1 Arcane Signet
-1 Swords to Plowshares
-...
-```
-
----
-
-## Fuentes de datos
-
-BracketMTG utiliza principalmente:
-
-- **Scryfall** para información de cartas, legalidad, imágenes, datos Oracle y precios.
-- **EDHREC** para información relacionada con Commander y recomendaciones.
-- Servicios internos de análisis para combos, consistencia, curva de maná y clasificación del mazo.
-
-Para mejorar el rendimiento, las consultas a cartas se realizan por lotes siempre que es posible y determinados resultados se almacenan temporalmente en caché en el backend.
-
----
-
-## Tecnologías
-
-### Frontend
-
-- React 19
-- Vite 8
-- JavaScript
-- CSS responsive
-- ESLint
-
-### Backend
-
-- Node.js 22+
-- Express 5
-- MongoDB
-- Mongoose
-- JWT
-- bcrypt
-- Nodemailer
-- Axios
-
-### Infraestructura
-
-- **Vercel** — frontend.
-- **Render** — API/backend.
-- **MongoDB Atlas** — base de datos.
-- **GitHub** — control de versiones y despliegue continuo.
-
----
-
-## Estructura del proyecto
-
-```text
-bracketmtg/
-├── mtg-frontend/
+ligatimidina/
+│
+├── backend/
+│   ├── accounts/       # Usuarios, registro, perfiles y mensajería
+│   ├── binders/        # Carpetas públicas de cartas
+│   ├── config/         # Configuración Django
+│   ├── decks/          # Mazos y análisis DeckCheck
+│   ├── events/         # Eventos semanales
+│   ├── handicaps/      # No te flipes, handicaps y pesos
+│   ├── league/         # Temporadas, jornadas, clasificación y ajustes
+│   ├── matches/        # Partidas, participantes y eliminaciones
+│   ├── penalties/      # Penalizaciones
+│   ├── watches/        # Funciones auxiliares de seguimiento
+│   ├── manage.py
+│   └── media/
+│
+├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── services/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   └── main.jsx
 │   ├── package.json
 │   └── vite.config.js
 │
-└── mtg-deck-analyzer/
-    ├── config/
-    ├── middleware/
-    ├── models/
-    ├── routes/
-    ├── services/
-    ├── utils/
-    ├── server.js
-    ├── test.js
-    └── package.json
+├── requirements.txt
+├── .python-version
+└── README.md
 ```
-
-En producción, frontend y backend pueden mantenerse en repositorios GitHub independientes.
-
 ---
-
-# Instalación local
-
-## Requisitos
-
-- Node.js **22.12 o superior**.
-- npm.
-- Una base de datos MongoDB.
-- Cuenta de Gmail con contraseña de aplicación si se quiere utilizar recuperación de contraseña y formulario de contacto.
-
+Instalación local
+Requisitos
+Necesitas tener instalado:
+Python 3.13
+Node.js
+npm
+Git
+PostgreSQL es recomendable, aunque para desarrollo puede utilizarse SQLite.
 ---
-
-## Backend
-
-```bash
-cd mtg-deck-analyzer
-npm ci
+1. Clonar el repositorio
+```bat
+git clone TU_REPOSITORIO
+cd ligatimidina
 ```
-
-Crea un archivo `.env` tomando como referencia `.env.example`:
-
-```env
-NODE_ENV=development
-PORT=3001
-
-MONGO_URI=mongodb+srv://USER:PASSWORD@HOST/DATABASE
-JWT_SECRET=replace-with-a-long-random-secret
-
-EMAIL_USER=deckbracket@gmail.com
-EMAIL_PASS=your-gmail-app-password
-EMAIL_FROM=BracketMTG <deckbracket@gmail.com>
-CONTACT_TO=deckbracket@gmail.com
-
-CLIENT_URL=http://localhost:5173
-ALLOWED_ORIGINS=http://localhost:5173
+---
+2. Crear el entorno virtual
+En Windows CMD:
+```bat
+python -m venv backend\.venv
+call backend\.venv\Scripts\activate.bat
 ```
-
-Inicia el backend:
-
-```bash
-npm run dev
+Instalar las dependencias:
+```bat
+pip install -r requirements.txt
 ```
-
-O:
-
-```bash
-npm start
-```
-
-La API estará disponible normalmente en:
-
+---
+3. Variables de entorno del backend
+Crea:
 ```text
-http://localhost:3001
+backend\.env
 ```
-
-### Tests
-
-```bash
-npm test
-```
-
-Los tests incluyen comprobaciones del flujo del analizador, normalización ES/EN, zona de mando, precios, CMC y exportación.
-
----
-
-## Frontend
-
-```bash
-cd mtg-frontend
-npm ci
-```
-
-Crea un `.env`:
-
+Ejemplo para desarrollo local con SQLite:
 ```env
-VITE_API_URL=http://localhost:3001
+DJANGO_SECRET_KEY=cambia-esta-clave-en-tu-equipo
+DJANGO_DEBUG=True
+DJANGO_USE_SQLITE=True
+
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
-
-Inicia Vite:
-
-```bash
+Nunca subas el archivo `.env` real al repositorio.
+Para PostgreSQL también puede utilizarse:
+```env
+DJANGO_USE_SQLITE=False
+DATABASE_URL=postgresql://USUARIO:PASSWORD@HOST:5432/BASE_DE_DATOS
+```
+Alternativamente, el backend admite las variables:
+```env
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+DB_HOST=
+DB_PORT=
+```
+---
+4. Migraciones
+Desde la raíz:
+```bat
+python backend\manage.py migrate
+```
+Crear administrador:
+```bat
+python backend\manage.py createsuperuser
+```
+---
+5. Iniciar backend
+```bat
+python backend\manage.py runserver
+```
+Backend local:
+```text
+http://127.0.0.1:8000
+```
+Panel Django:
+```text
+http://127.0.0.1:8000/admin/
+```
+Health check:
+```text
+http://127.0.0.1:8000/health/
+```
+---
+6. Instalar frontend
+En otra consola:
+```bat
+cd frontend
+npm install
+```
+Ejecutar:
+```bat
 npm run dev
 ```
-
-La aplicación estará disponible normalmente en:
-
+Frontend local:
 ```text
 http://localhost:5173
 ```
-
-### Validación
-
-```bash
+---
+Comandos útiles
+Backend
+Comprobar configuración:
+```bat
+python backend\manage.py check
+```
+Comprobar migraciones pendientes:
+```bat
+python backend\manage.py makemigrations --check
+```
+Aplicar migraciones:
+```bat
+python backend\manage.py migrate
+```
+Crear administrador:
+```bat
+python backend\manage.py createsuperuser
+```
+Ejecutar todos los tests:
+```bat
+python backend\manage.py test
+```
+O por aplicación:
+```bat
+python backend\manage.py test accounts
+python backend\manage.py test binders
+python backend\manage.py test decks
+python backend\manage.py test events
+python backend\manage.py test handicaps
+python backend\manage.py test league
+python backend\manage.py test matches
+python backend\manage.py test penalties
+python backend\manage.py test watches
+```
+Frontend
+```bat
+cd frontend
+npm run dev
 npm run lint
 npm run build
 ```
-
 ---
-
-# Variables de entorno
-
-## Backend
-
-| Variable | Descripción | Obligatoria |
-| --- | --- | --- |
-| `NODE_ENV` | Entorno de ejecución | Sí |
-| `PORT` | Puerto del servidor | No |
-| `MONGO_URI` | Conexión MongoDB | Sí |
-| `JWT_SECRET` | Clave de firma de sesiones | Sí |
-| `EMAIL_USER` | Cuenta para enviar emails | Para email |
-| `EMAIL_PASS` | Contraseña de aplicación Gmail | Para email |
-| `EMAIL_FROM` | Remitente mostrado | No |
-| `CONTACT_TO` | Destino del formulario | No |
-| `CLIENT_URL` | URL del frontend | Sí |
-| `ALLOWED_ORIGINS` | Orígenes CORS permitidos | Sí |
-| `SPANISH_CARD_INDEX_URL` | Índice opcional español → inglés | No |
-
-> No subas nunca el archivo `.env`, contraseñas, tokens ni credenciales al repositorio.
-
-### Gmail
-
-`EMAIL_PASS` debe ser una **contraseña de aplicación de Google**, no la contraseña habitual de Gmail.
-
----
-
-## Frontend
-
-| Variable | Descripción |
-| --- | --- |
-| `VITE_API_URL` | URL pública de la API |
-
-Producción actual:
-
-```env
-VITE_API_URL=https://bracketmtg.onrender.com
-```
-
-Con subdominio propio:
-
-```env
-VITE_API_URL=https://api.bracketmtg.com
-```
-
----
-
-# Despliegue
-
-## Vercel
-
-Configuración recomendada:
-
+API
+La API está situada bajo:
 ```text
-Framework: Vite
-Build Command: npm run build
-Output Directory: dist
-Node.js: 22+
+/api/
 ```
-
-Variable:
-
-```env
-VITE_API_URL=https://bracketmtg.onrender.com
-```
-
-Con GitHub conectado a `main`, cada `git push` puede generar automáticamente un nuevo deployment.
-
----
-
-## Render
-
-Configuración recomendada:
-
+Principales grupos:
 ```text
-Runtime: Node
-Build Command: npm ci
-Start Command: npm start
-Node.js: 22+
+/api/accounts/
+/api/binders/
+/api/decks/
+/api/events/
+/api/handicaps/
+/api/league/
+/api/matches/
+/api/penalties/
+/api/watches/
 ```
+La autenticación utilizada por la aplicación es mediante sesión Django, cookies y protección CSRF.
+Entre los endpoints relevantes se encuentran:
+```text
+GET  /api/accounts/me/
+GET  /api/accounts/players/
 
+GET  /api/league/standings/
+GET  /api/league/current-week/
+
+GET  /api/handicaps/categories/
+GET  /api/handicaps/definitions/
+GET  /api/handicaps/grants/mine/
+
+GET  /api/binders/
+```
+Los permisos y la privacidad se validan en backend, no solamente ocultando información desde React.
+---
+Seguridad
+La configuración incluye:
+protección CSRF;
+cookies de sesión HttpOnly;
+cookies Secure en producción;
+SameSite;
+Content Security Policy;
+`X-Frame-Options: DENY`;
+protección MIME sniffing;
+política de referrer;
+throttling de API;
+límites de carga;
+validación de archivos de avatar;
+WhiteNoise para estáticos;
+soporte HTTPS detrás de proxy;
+HSTS configurable.
+Variables relacionadas con producción:
+```env
+DJANGO_DEBUG=False
+DJANGO_CSRF_TRUSTED_ORIGINS=https://ligatimidina.vercel.app
+
+DJANGO_SESSION_COOKIE_SECURE=True
+DJANGO_CSRF_COOKIE_SECURE=True
+
+DJANGO_SECURE_SSL_REDIRECT=False
+DJANGO_SECURE_HSTS_SECONDS=3600
+DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=False
+DJANGO_SECURE_HSTS_PRELOAD=False
+```
+La redirección HTTPS puede delegarse en el proxy/plataforma de despliegue.
+---
+Correo
+En desarrollo, Django utiliza el backend de correo por consola.
+En producción pueden configurarse:
+```env
+DJANGO_DEFAULT_FROM_EMAIL=
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_USE_TLS=True
+SMTP_TIMEOUT=10
+```
+Nunca almacenes contraseñas SMTP en Git.
+---
+Despliegue
+Backend en Render
+Build command:
+```text
+pip install -r requirements.txt && python backend/manage.py collectstatic --noinput && python backend/manage.py migrate
+```
+Start command:
+```text
+gunicorn --chdir backend config.wsgi:application --bind 0.0.0.0:$PORT
+```
+Health check:
+```text
+/health/
+```
 Variables principales:
-
-```env
-NODE_ENV=production
-MONGO_URI=...
-JWT_SECRET=...
-
-EMAIL_USER=deckbracket@gmail.com
-EMAIL_PASS=...
-EMAIL_FROM=BracketMTG <deckbracket@gmail.com>
-CONTACT_TO=deckbracket@gmail.com
-
-CLIENT_URL=https://www.bracketmtg.com
-ALLOWED_ORIGINS=https://www.bracketmtg.com,https://bracketmtg.com
+```text
+DATABASE_URL
+DJANGO_SECRET_KEY
+DJANGO_DEBUG=False
+DJANGO_USE_SQLITE=False
+DJANGO_CSRF_TRUSTED_ORIGINS=https://ligatimidina.vercel.app
+DJANGO_SESSION_COOKIE_SECURE=True
+DJANGO_CSRF_COOKIE_SECURE=True
 ```
-
-Con Auto Deploy activado sobre `main`, los nuevos commits se despliegan automáticamente.
-
+No compartas nunca públicamente:
+`DATABASE_URL`;
+contraseñas de PostgreSQL;
+`DJANGO_SECRET_KEY`;
+`.env`;
+credenciales SMTP.
 ---
+Frontend en Vercel
+Configura como Root Directory:
+```text
+frontend
+```
+Build:
+```text
+npm run build
+```
+El frontend utiliza rutas `/api/...`.
+En el despliegue actual, Vercel reescribe las solicitudes de API hacia Render.
+Regla:
+```text
+Request Path:
+ /api/:path*
 
-# Seguridad
-
-La aplicación incluye:
-
-- Contraseñas almacenadas mediante bcrypt.
-- Sesiones firmadas con JWT.
-- Cookie de sesión `httpOnly`.
-- Validación de sesión en servidor.
-- Rate limiting en autenticación y endpoints sensibles.
-- CORS limitado a dominios configurados.
-- Sanitización del formulario de contacto.
-- Tokens de recuperación de contraseña con caducidad.
-- Validación de entradas y tamaños máximos.
-
-Las credenciales deben almacenarse únicamente como variables de entorno.
-
+Rewrite:
+ https://ligatimidina.onrender.com/api/$1/
+```
+La barra final del destino es importante para evitar un bucle de redirecciones con las rutas Django que terminan en `/`.
 ---
-
-# Actualizar el proyecto
-
-## Frontend
-
-```bash
-cd mtg-frontend
-
-npm ci
+Archivos multimedia
+Los avatares utilizan actualmente `MEDIA_ROOT` y almacenamiento de archivos del servidor.
+Para un despliegue permanente se recomienda utilizar almacenamiento externo compatible con producción para evitar depender del disco efímero del servidor.
+Ejemplos de soluciones futuras:
+Amazon S3;
+Cloudflare R2;
+Cloudinary;
+otro almacenamiento de objetos compatible.
+---
+Flujo de registro
+El usuario rellena el formulario.
+Acepta las normas.
+Django crea la cuenta en estado pendiente.
+Administración revisa la solicitud.
+Administración activa la cuenta.
+El jugador puede iniciar sesión.
+El nombre y los apellidos reales son datos de administración y no deben publicarse en el perfil del jugador.
+---
+Administración
+La administración tiene autoridad para:
+validar usuarios;
+gestionar temporadas;
+generar y cerrar jornadas;
+crear eventos;
+registrar partidas;
+cerrar partidas;
+corregir resultados;
+conceder No te flipes;
+gestionar definiciones y pesos;
+consultar penalizaciones;
+gestionar premios;
+responder mensajes;
+realizar correcciones históricas.
+Las acciones sensibles deben mantenerse protegidas por permisos de backend.
+---
+Privacidad del sistema “No te flipes”
+Regla crítica del proyecto:
+el titular sabe que dispone de un poder;
+puede elegir a quién lanzarlo;
+no puede conocer de antemano la penalización;
+la penalización se sortea únicamente cuando se lanza;
+el backend decide el resultado;
+la ruleta no decide el resultado;
+el jugador afectado puede consultar su penalización;
+administración puede auditar todos los datos;
+otros jugadores no deben recibir información sensible de una penalización ajena.
+---
+Mejoras y tareas pendientes
+Las siguientes mejoras forman parte del trabajo previsto y no deben considerarse terminadas hasta que estén implementadas y probadas.
+Gestión de participación y fechas
+La fecha asociada a una aportación debe ser opcional.
+Un jugador sin aportación de pago no necesita fecha de caducidad.
+El vencimiento de una aportación no debe desactivar la cuenta.
+Al vencer, el jugador debe continuar activo con las condiciones generales de participación.
+Corregir el formulario de administración si actualmente obliga a introducir una fecha.
+Rendimiento inicial
+Reducir el tiempo de espera al aceptar cookies o volver a entrar.
+Permitir que el usuario vea y rellene el login mientras se realizan en segundo plano las comprobaciones iniciales.
+Evitar bloquear la interfaz por la carga del estado completo de la aplicación.
+Revisar la latencia producida por el arranque del backend en el entorno de despliegue.
+Registro de backend
+Incorporar un sistema de logging persistente/configurable.
+Generar un `log.txt` en entorno local.
+Registrar acciones relevantes en tiempo real:
+login;
+registro;
+errores;
+acciones administrativas;
+partidas;
+eventos;
+No te flipes;
+cambios sensibles.
+Evitar guardar contraseñas, tokens, secretos o datos sensibles dentro de los logs.
+En producción, preferir logs de plataforma o almacenamiento persistente frente a depender exclusivamente de un archivo local.
+Registro de nuevos usuarios
+Tras completar correctamente un registro:
+mostrar el mensaje de cuenta pendiente de validación;
+abandonar el formulario de alta;
+regresar automáticamente a la pantalla de login.
+Hitos para obtener un “No te flipes”
+Se prevé incorporar un catálogo configurable de hitos de partida que pueda justificar la concesión de un No te flipes.
+Ejemplos iniciales:
+controlar 40 o más permanentes simultáneamente;
+hacer 100 o más puntos de daño a un único oponente de una vez;
+ganar una partida con 100 o más vidas;
+alcanzar otros hitos extraordinarios definidos por administración.
+El sistema deberá registrar el motivo del hito y permitir a administración decidir si la recompensa se concede automáticamente o requiere validación.
+---
+Colaboración
+Liga Timidina incluye referencias a:
+Magic: The Gathering;
+DeckCheck;
+A Dado y Pluma · Triana.
+Los nombres, marcas y recursos de terceros pertenecen a sus respectivos titulares.
+---
+Desarrollo
+Antes de subir cambios:
+```bat
+git status
+python backend\manage.py check
+python backend\manage.py makemigrations --check
+```
+Frontend:
+```bat
+cd frontend
 npm run lint
 npm run build
-
-git add -A
-git commit -m "Update BracketMTG frontend"
+cd ..
+```
+Después:
+```bat
+git add .
+git commit -m "Describe aqui el cambio realizado"
 git push origin main
 ```
-
-## Backend
-
-```bash
-cd mtg-deck-analyzer
-
-npm ci
-npm test
-
-git add -A
-git commit -m "Update BracketMTG backend"
-git push origin main
+El despliegue conectado a Git puede actualizar automáticamente Vercel y Render tras el `push`.
+---
+Importante
+No subas al repositorio:
+```text
+backend/.env
+backend/.venv/
+frontend/node_modules/
+frontend/dist/
+backend/staticfiles/
+__pycache__/
+*.pyc
 ```
-
+Tampoco deben versionarse bases de datos locales, copias de seguridad ni archivos que contengan credenciales.
 ---
-
-# Aviso sobre los brackets
-
-La clasificación mostrada por BracketMTG es una **estimación automática** basada en las características detectables de la lista.
-
-La intención del jugador, el entorno de juego y las expectativas de la mesa también influyen en cómo debe considerarse un mazo de Commander, por lo que el resultado debe utilizarse como orientación y no como clasificación oficial.
-
----
-
-# Disclaimer
-
-BracketMTG es un proyecto independiente y no está afiliado, patrocinado ni respaldado por Wizards of the Coast.
-
-Magic: The Gathering, Commander y sus respectivos nombres, símbolos e imágenes son propiedad de sus titulares correspondientes.
-
-Los datos utilizados por la aplicación proceden de servicios externos como Scryfall y EDHREC y están sujetos a sus respectivos términos y disponibilidad.
-
----
-
-## Estado del proyecto
-
-El proyecto se encuentra en desarrollo activo. Las mejoras actuales están centradas en:
-
-- precisión del análisis de Commander;
-- tiempos de respuesta;
-- compatibilidad de nombres en distintos idiomas;
-- calidad de recomendaciones;
-- experiencia responsive en móvil y escritorio;
-- estabilidad de precios y fuentes externas.
-
----
-
-**BracketMTG — analiza el mazo, entiende el plan, juega mejor.**
+Liga Timidina
+Commander semanal, clasificación, eventos y caos controlado.
